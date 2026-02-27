@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Móveis Simonetti - Gestão de Assistência</title>
+  <style>
+    :root {
+      --primary: #004a99;
+      --danger: #dc3545;
+      --success: #28a745;
+      --warning: #f39c12;
+      --gray: #6c757d;
+      --border-color: #dddddd;
+    }
+
+    body { background-color: #f4f7f6; margin: 0; font-family: 'Segoe UI', sans-serif; }
+
+    .top-nav {
+      background: var(--primary); color: white; padding: 10px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .nav-left { display: flex; align-items: center; gap: 15px; }
+    .btn-back { 
+      background: rgba(255,255,255,0.2); border: none; color: white; 
+      padding: 5px 12px; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 20px;
+    }
+
+    /* Painel de Filtros Triplo */
+    .search-panel { 
+        background: white; 
+        margin: 15px 20px; 
+        padding: 15px; 
+        border-radius: 8px; 
+        border: 1px solid #ddd;
+        display: flex;
+        gap: 15px;
+        align-items: flex-end;
+    }
+
+    .cadastro-bar { background: #eee; padding: 15px 20px; display: flex; gap: 10px; align-items: flex-end; border-bottom: 2px solid var(--primary); }
+    .field-group { display: flex; flex-direction: column; gap: 4px; }
+    .field-group label { font-size: 11px; font-weight: bold; color: #444; }
+    .field-group input, .field-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+
+    .main-content { padding: 0 20px; }
+    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    th { 
+      background: #f2f2f2; color: #333; padding: 12px; text-align: left; font-size: 12px; 
+      border: 1px solid var(--border-color);
+    }
+    td { 
+      padding: 10px; border: 1px solid var(--border-color);
+      font-size: 14px; 
+    }
+    
+    .row-prod { background: #fdfdfd; font-weight: bold; }
+    .row-vol { background: #ffffff; display: none; }
+    .row-vol.active { display: table-row; }
+    .indent { padding-left: 30px; color: #555; }
+
+    .btn-action { 
+        padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; 
+        color: white; font-weight: bold; font-size: 12px; transition: 0.2s;
+    }
+    .btn-action:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+
+  <div class="top-nav">
+    <div class="nav-left">
+      <a href="dashboard.html" class="btn-back">←</a>
+      <span id="labelUser">Olá...</span>
+    </div>
+    <div style="font-size: 14px; opacity: 0.9;">CONTROLE DE PULMÃO - ASSISTÊNCIA</div>
+    <button onclick="logout()" class="btn-action" style="background:var(--danger)">Sair</button>
+  </div>
+
+  <div class="cadastro-bar">
+    <div class="field-group">
+      <label>CÓDIGO (SKU):</label>
+      <input type="text" id="newCod" placeholder="Ex: 40169700" style="width: 100px;">
+    </div>
+    <div class="field-group" style="flex-grow: 1;">
+      <label>DESCRIÇÃO DO PRODUTO (PRINCIPAL):</label>
+      <input type="text" id="newNome" placeholder="Ex: ROUPEIRO 2PTS DESLIZ SERENO">
+    </div>
+    <div class="field-group">
+      <label>FORNECEDOR:</label>
+      <select id="selForn" style="width: 180px;"><option>Carregando...</option></select>
+    </div>
+    <button class="btn-action" id="btnSaveProd" style="background:var(--primary); height: 36px; padding: 0 15px;">SALVAR</button>
+  </div>
+
+  <div class="search-panel">
+    <div class="field-group" style="width: 140px;">
+      <label>FILTRAR CÓDIGO:</label>
+      <input type="text" id="filtroCod" placeholder="Cód..." onkeyup="filtrar()">
+    </div>
+    
+    <div class="field-group" style="width: 220px;">
+      <label>FORNECEDOR:</label>
+      <select id="filtroForn" onchange="filtrar()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+
+    <div class="field-group" style="flex-grow: 1;">
+      <label>PRODUTO OU VOLUME:</label>
+      <input type="text" id="filtroDesc" placeholder="🔍 Buscar por nome ou volume..." onkeyup="filtrar()">
+    </div>
+    
+    <button class="btn-action" onclick="limparFiltros()" style="background:var(--gray); height: 35px; padding: 0 15px;">Limpar</button>
+  </div>
+
+  <div class="main-content">
+    <table id="tblEstoque">
+      <thead>
+        <tr>
+          <th style="width: 30px; text-align: center;">#</th>
+          <th>FORNECEDOR</th>
+          <th>CÓDIGO</th>
+          <th>DESCRIÇÃO / VOLUME</th>
+          <th style="width: 80px; text-align: center;">QTD</th>
+          <th style="width: 280px; text-align: right;">AÇÕES</th>
+        </tr>
+      </thead>
+      <tbody id="corpoTabela"></tbody>
+    </table>
+  </div>
+
+  <script type="module" src="js/produtos.js"></script>
+</body>
+</html>

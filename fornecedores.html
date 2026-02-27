@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fornecedores - Móveis Simonetti</title>
+    <style>
+        :root {
+            --primary: #004a99;
+            --glass: rgba(255, 255, 255, 0.2);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --danger: #dc3545;
+            --success: #28a745;
+            --warning: #f39c12;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #002d5f 0%, #004a99 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: white;
+        }
+
+        /* Top Bar */
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 25px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        .nav-left { display: flex; align-items: center; gap: 15px; }
+        .btn-nav {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        /* Form Card */
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+        
+        .glass-panel {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .grid-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .field-group { display: flex; flex-direction: column; gap: 5px; }
+        .field-group label { font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .field-group input {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+
+        /* Table Style */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th { background: #eee; padding: 12px; text-align: left; font-size: 13px; border-bottom: 2px solid #ddd; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        
+        .btn-action {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-nav">
+        <div class="nav-left">
+            <a href="dashboard.html" class="btn-nav">← Voltar</a>
+            <span id="labelUser">Olá, Usuário</span>
+        </div>
+        <div style="font-weight: bold;">CADASTRO DE FORNECEDORES</div>
+        <button id="btnLogout" class="btn-nav" style="background: var(--danger)">Sair</button>
+    </div>
+
+    <div class="container">
+        <div class="glass-panel">
+            <h3 style="margin-top:0">Novo Fornecedor</h3>
+            <div class="grid-form">
+                <div class="field-group">
+                    <label>Nome / Razão Social:</label>
+                    <input type="text" id="nomeF" placeholder="Ex: Móveis Estrela">
+                </div>
+                <div class="field-group">
+                    <label>CNPJ:</label>
+                    <input type="text" id="cnpjF" placeholder="00.000.000/0000-00" maxlength="18">
+                </div>
+                <div class="field-group">
+                    <label>E-mail:</label>
+                    <input type="email" id="emailF" placeholder="contato@fornecedor.com">
+                </div>
+                <div class="field-group">
+                    <label>Telefone:</label>
+                    <input type="text" id="telefoneF" placeholder="(00) 00000-0000" maxlength="15">
+                </div>
+                <button id="btnSalvarF" class="btn-action" style="background: var(--success); height: 40px;">CADASTRAR</button>
+            </div>
+        </div>
+
+        <div class="glass-panel" style="padding:0; overflow:hidden;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fornecedor</th>
+                        <th>CNPJ</th>
+                        <th>E-mail</th>
+                        <th>Telefone</th>
+                        <th style="text-align: right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="listaF">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module" src="js/fornecedores.js"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+:root {
+    --primary: #004a99;
+    --primary-dark: #003670;
+    --accent: #f39c12; /* Laranja Simonetti para detalhes */
+    --text: #2c3e50;
+    --white: #ffffff;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--primary);
+    /* Padrão de fundo sutil com 'MS' */
+    background-image: linear-gradient(135deg, rgba(0, 74, 153, 0.9) 0%, rgba(0, 45, 95, 0.95) 100%),
+        url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='10' y='50' fill='white' fill-opacity='0.05' font-family='Inter' font-weight='800' font-size='30'%3EMS%3C/text%3E%3C/svg%3E");
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-container {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 50px 40px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Estilização do título sem imagem */
+h2 {
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 28px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: -1px;
+}
+
+.subtitle {
+    color: #7f8c8d;
+    font-size: 14px;
+    margin-bottom: 30px;
+    display: block;
+}
+
+.input-group {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #edf2f7;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    outline: none;
+    background: #f8fafc;
+}
+
+input:focus {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(0, 74, 153, 0.1);
+}
+
+button {
+    width: 100%;
+    padding: 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+    box-shadow: 0 4px 6px rgba(0, 74, 153, 0.2);
+}
+
+button:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 7px 14px rgba(0, 74, 153, 0.3);
+}
+
+#error {
+    color: #e74c3c;
+    font-size: 14px;
+    margin-top: 15px;
+    font-weight: 500;
+}
+
+.footer-text {
+    margin-top: 30px;
+    font-size: 12px;
+    color: #bdc3c7;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}

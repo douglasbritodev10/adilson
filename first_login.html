@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Simonetti - Primeiro Acesso</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #e9ecef; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 350px; }
+        h2 { color: #007bff; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        #errorMsg { color: #dc3545; margin-top: 15px; font-size: 14px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Configurar Perfil</h2>
+    <p>Olá! Este é o seu primeiro acesso. Por favor, defina os seus dados:</p>
+    
+    <input type="text" id="username" placeholder="Nome de Utilizador (Ex: João Silva)">
+    <input type="password" id="newPassword" placeholder="Nova Senha">
+    <input type="password" id="confirmPassword" placeholder="Confirmar Nova Senha">
+    
+    <button id="btnAtualizar">Concluir Cadastro</button>
+    <p id="errorMsg"></p>
+</div>
+
+<script type="module">
+  import { auth, db } from "./js/firebase-config.js";
+  import { updatePassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+  const btn = document.getElementById("btnAtualizar");
+  const errorMsg = document.getElementById("errorMsg");
+
+  btn.addEventListener("click", async () => {
+    const username = document.getElementById("username").value;
+    const newPassword = document.getElementById("newPassword").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+
+    if (!username || !newPassword) {
+        errorMsg.textContent = "Preencha todos os campos.";
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        errorMsg.textContent = "As senhas não coincidem.";
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        errorMsg.textContent = "A senha deve ter no mínimo 6 caracteres.";
+        return;
+    }
+
+    const user = auth.currentUser;
+    if (user) {
+        try {
+            // 1. Atualiza a senha no Firebase Auth
+            await updatePassword(user, newPassword);
+
+            // 2. Atualiza os dados no Firestore e remove a flag de primeiro acesso
+            const userDocRef = doc(db, "users", user.uid);
+            await updateDoc(userDocRef, {
+                nomeCompleto: username,
+                isFirstLogin: false,
+                dataConfiguracao: new Date()
+            });
+            
+            alert("Perfil configurado com sucesso!");
+            window.location.href = "dashboard.html";
+
+        } catch (error) {
+            console.error(error);
+            errorMsg.textContent = "Erro ao salvar. Tente fazer login novamente.";
+        }
+    } else {
+        window.location.href = "index.html";
+    }
+  });
+
+  // Proteção da página: se não estiver logado, volta para o login
+  onAuthStateChanged(auth, user => {
+    if (!user) window.location.href = "index.html";
+  });
+</script>
+
+</body>
+</html>

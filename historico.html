@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico de Giro - Móveis Simonetti</title>
+  <style>
+    :root {
+      --primary: #004a99;
+      --glass: rgba(255, 255, 255, 0.2);
+      --glass-border: rgba(255, 255, 255, 0.3);
+      --danger: #dc3545;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #002d5f 0%, #004a99 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      color: white;
+    }
+
+    /* Top Bar */
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 25px;
+      background: rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(10px);
+    }
+    .nav-left { display: flex; align-items: center; gap: 15px; }
+    .btn-nav {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      color: white;
+      padding: 8px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    /* Glass Panels */
+    .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+    
+    .glass-panel {
+      background: var(--glass);
+      backdrop-filter: blur(15px);
+      border: 1px solid var(--glass-border);
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    /* Filters Layout */
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      align-items: flex-end;
+    }
+
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-group label { font-size: 12px; font-weight: bold; text-transform: uppercase; }
+    .filter-group select, .filter-group input {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.9);
+      color: #333;
+    }
+
+    /* Table Style */
+    .table-container { background: rgba(255, 255, 255, 0.95); border-radius: 12px; overflow: hidden; color: #333; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #eee; padding: 12px; text-align: left; font-size: 13px; border-bottom: 2px solid #ddd; color: var(--primary); }
+    td { padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+    
+    .tipo-Entrada { color: #28a745; font-weight: bold; }
+    .tipo-Saída { color: #dc3545; font-weight: bold; }
+    .tipo-Edição { color: #f39c12; font-weight: bold; }
+    .tipo-Exclusão { color: #6c757d; font-weight: bold; }
+
+    .btn-delete {
+      background: var(--danger);
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-nav">
+    <div class="nav-left">
+      <a href="dashboard.html" class="btn-nav">← Voltar</a>
+      <span id="labelUser">Olá, Usuário</span>
+    </div>
+    <div style="font-weight: bold; letter-spacing: 1px;">HISTÓRICO DE MOVIMENTAÇÕES</div>
+    <button id="btnLogout" class="btn-nav" style="background: var(--danger)">Sair</button>
+  </div>
+
+  <div class="container">
+    <div class="glass-panel">
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label>Filtrar por Data:</label>
+          <input type="date" id="filtroData">
+        </div>
+        <div class="filter-group">
+          <label>Tipo de Ação:</label>
+          <select id="filtroTipo">
+            <option value="Todos">Todas as Ações</option>
+            <option value="Entrada">Entradas</option>
+            <option value="Saída">Saídas</option>
+            <option value="Edição">Edições</option>
+            <option value="Exclusão">Exclusões</option>
+          </select>
+        </div>
+        <button id="btnLimpar" class="btn-nav" style="height: 40px; background: var(--primary)">Limpar Filtros</button>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table id="tabelaHistorico">
+        <thead>
+          <tr>
+            <th>Data / Hora</th>
+            <th>Operador</th>
+            <th>Produto / Volume</th>
+            <th>Ação</th>
+            <th>Qtd</th>
+            <th style="text-align: right;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="corpoTabela">
+          </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="js/historico.js"></script>
+</body>
+</html>
