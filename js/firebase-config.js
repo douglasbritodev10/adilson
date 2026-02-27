@@ -3,12 +3,12 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDWbYc7y0EVsl6iUkk8rYdAxi-fluzt3iI",
-  authDomain: "assistencia-sm.firebaseapp.com",
-  projectId: "assistencia-sm",
-  storageBucket: "assistencia-sm.firebasestorage.app",
-  messagingSenderId: "737353763297",
-  appId: "1:737353763297:web:7ffa196232f46eb616aaa0"
+  apiKey: "AIzaSyBul_frK1GnyAzTuLSKQCJso5XwgjAnn9k",
+  authDomain: "linha-eletro.firebaseapp.com",
+  projectId: "linha-eletro",
+  storageBucket: "linha-eletro.firebasestorage.app",
+  messagingSenderId: "366258439760",
+  appId: "1:366258439760:web:90e92c63ab22e3b7c4f355"
 };
 
 const app = initializeApp(firebaseConfig);
