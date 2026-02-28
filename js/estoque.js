@@ -170,7 +170,7 @@ window.abrirAcao = (volId, tipo) => {
             if (tipo === 'saida') {
                 // Registrar Movimentação e descontar
                 await updateDoc(doc(db, "volumes", volId), { quantidade: increment(-qtd), ultimaMovimentacao: serverTimestamp() });
-                await addDoc(collection(db, "historico"), { 
+                await addDoc(collection(db, "movimentacoes"), { 
                     tipo: "SAÍDA", volume: vol.descricao, qtd, usuario: usernameDB, data: serverTimestamp() 
                 });
             } else {
