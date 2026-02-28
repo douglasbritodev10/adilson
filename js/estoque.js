@@ -12,7 +12,7 @@ onAuthStateChanged(auth, async user => {
     if (user) {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) nomeCompletoDB = userSnap.data().username || user.email.split('@')[0].toUpperCase();
+        if (userSnap.exists()) nomeCompletoDB = userSnap.data().nomeCompleto || user.email.split('@')[0].toUpperCase();
         
         const display = document.getElementById("userDisplay");
         if(display) display.innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB}`;
