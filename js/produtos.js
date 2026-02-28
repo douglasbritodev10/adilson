@@ -2,7 +2,7 @@ import { db, auth } from "./firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { 
     collection, addDoc, getDocs, serverTimestamp, doc, getDoc,
-    updateDoc, query, orderBy, deleteDoc, increment 
+    updateDoc, query, orderBy, deleteDoc, writeBatch 
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 let fornecedoresCache = {};
@@ -15,30 +15,18 @@ onAuthStateChanged(auth, async user => {
         if (userSnap.exists()) {
             const data = userSnap.data();
             usernameDB = data.nomeCompleto || "Usuário";
-            userRole = data.role || "leitor";
+            userRole = (data.role || "leitor").toLowerCase();
             if(userRole === "admin") document.getElementById("painelCadastro").style.display = "flex";
         }
-        document.getElementById("userDisplay").innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB} (${userRole.toUpperCase()})`;
-        
-        // Recuperar Filtros
-        document.getElementById("filtroCod").value = localStorage.getItem("f_cod") || "";
-        document.getElementById("filtroDesc").value = localStorage.getItem("f_desc") || "";
-        
+        document.getElementById("userDisplay").innerHTML = `<i class="fas fa-user"></i> ${usernameDB}`;
         init();
     } else { window.location.href = "index.html"; }
 });
 
-// Registrar log na coleção movimentacoes
-async function registrarMov(tipo, prodNome, volDesc, qtd, anterior, atual) {
+async function registrarMov(tipo, prod, vol, qtd, ant, atu) {
     await addDoc(collection(db, "movimentacoes"), {
-        usuario: usernameDB,
-        tipo: tipo, // "ENTRADA", "SAÍDA", "EDIÇÃO", "EXCLUSÃO"
-        produto: prodNome,
-        volume: volDesc,
-        quantidade: qtd,
-        estoqueAnterior: anterior,
-        estoqueAtual: atual,
-        data: serverTimestamp()
+        usuario: usernameDB, tipo, produto: prod, volume: vol, 
+        quantidade: qtd, anterior: ant, atual: atu, data: serverTimestamp()
     });
 }
 
@@ -46,17 +34,13 @@ async function init() {
     const fSnap = await getDocs(query(collection(db, "fornecedores"), orderBy("nome")));
     const selC = document.getElementById("selForn");
     const selF = document.getElementById("filtroForn");
-    
     selC.innerHTML = '<option value="">Escolha o Fornecedor</option>';
     selF.innerHTML = '<option value="">Todos os Fornecedores</option>';
-
     fSnap.forEach(d => {
         fornecedoresCache[d.id] = d.data().nome;
         const opt = `<option value="${d.id}">${d.data().nome}</option>`;
         selC.innerHTML += opt; selF.innerHTML += opt;
     });
-
-    selF.value = localStorage.getItem("f_forn") || "";
     refresh();
 }
 
@@ -69,49 +53,59 @@ async function refresh() {
     const tbody = document.getElementById("tblEstoque");
     tbody.innerHTML = "";
 
-    const volumesPorProd = {};
+    // Agrupar e Unificar volumes por SKU dentro de cada Produto
+    const produtosMap = {};
     vSnap.forEach(d => {
         const v = d.data();
-        if(!volumesPorProd[v.produtoId]) volumesPorProd[v.produtoId] = [];
-        volumesPorProd[v.produtoId].push({id: d.id, ...v});
+        const pId = v.produtoId;
+        if(!produtosMap[pId]) produtosMap[pId] = {};
+        
+        // Chave de unificação: Código (SKU)
+        const sku = v.codigo || "S/C";
+        if(!produtosMap[pId][sku]) {
+            produtosMap[pId][sku] = { 
+                ids: [d.id], // Guarda os IDs reais do banco para atualizar depois
+                codigo: sku,
+                descricao: v.descricao,
+                quantidade: 0 
+            };
+        } else {
+            produtosMap[pId][sku].ids.push(d.id);
+        }
+        produtosMap[pId][sku].quantidade += (v.quantidade || 0);
     });
 
     pSnap.forEach(d => {
         const p = d.data();
         const pId = d.id;
-        const vols = volumesPorProd[pId] || [];
-        // SOMA GLOBAL: Soma todos os volumes desse produto, independente de endereço
-        const totalGeral = vols.reduce((acc, curr) => acc + (curr.quantidade || 0), 0);
+        const volumesUnificados = Object.values(produtosMap[pId] || {});
+        const totalGeral = volumesUnificados.reduce((acc, curr) => acc + curr.quantidade, 0);
 
         tbody.innerHTML += `
-            <tr class="prod-row" data-id="${pId}" data-forn="${p.fornecedorId}">
-                <td onclick="window.toggleVols('${pId}')" style="cursor:pointer; text-align:center;"><i class="fas fa-chevron-right"></i></td>
-                <td style="font-weight:bold;">${p.codigo || '---'}</td>
+            <tr class="prod-row" data-id="${pId}" data-cod="${p.codigo}" data-forn="${p.fornecedorId}" onclick="window.toggleVols('${pId}')">
+                <td style="text-align:center;"><i class="fas fa-chevron-right"></i></td>
+                <td>${p.codigo || '---'}</td>
                 <td style="color:var(--primary); font-size:12px;">${fornecedoresCache[p.fornecedorId] || "---"}</td>
                 <td>${p.nome}</td>
-                <td style="text-align:center;"><b style="background:#ddd; padding:2px 8px; border-radius:10px;">${totalGeral}</b></td>
+                <td style="text-align:center;"><span class="badge-qty">${totalGeral}</span></td>
                 <td style="text-align:right;">
-                    <button class="btn btn-sm" style="background:var(--success); color:white;" onclick="window.modalVolume('${pId}', '${p.nome}')"><i class="fas fa-plus"></i> NOVO VOL</button>
-                    ${userRole === 'admin' ? `<button class="btn btn-sm" style="background:var(--warning);" onclick="window.editarProd('${pId}','${p.nome}','${p.codigo}')"><i class="fas fa-edit"></i></button>` : ''}
+                    <button class="btn btn-sm" style="background:var(--success); color:white;" onclick="event.stopPropagation(); window.modalNovoVolume('${pId}', '${p.nome}')"><i class="fas fa-plus"></i></button>
+                    ${userRole === 'admin' ? `<button class="btn btn-sm" style="background:var(--warning);" onclick="event.stopPropagation(); window.editarProd('${pId}','${p.nome}','${p.codigo}')"><i class="fas fa-edit"></i></button>` : ''}
                 </td>
             </tr>
         `;
 
-        vols.forEach(v => {
+        volumesUnificados.forEach(v => {
             tbody.innerHTML += `
                 <tr class="child-row child-${pId}" data-sku="${v.codigo}">
                     <td></td>
                     <td style="font-size:11px; color:var(--gray);">SKU: ${v.codigo}</td>
-                    <td colspan="2" style="padding-left:20px;">${v.descricao}</td>
-                    <td style="text-align:center; font-weight:bold; color:var(--primary);">${v.quantidade}</td>
+                    <td colspan="2" style="padding-left:20px; color:#555;">${v.descricao}</td>
+                    <td style="text-align:center; font-weight:bold;">${v.quantidade}</td>
                     <td style="text-align:right;">
                         <div style="display:flex; gap:5px; justify-content:flex-end;">
-                            <button class="btn btn-sm" style="background:var(--info); color:white;" onclick="window.movimentar('${v.id}','${p.nome}','${v.descricao}',${v.quantidade},'ENTRADA')" title="Entrada"><i class="fas fa-arrow-up"></i></button>
-                            <button class="btn btn-sm" style="background:var(--danger); color:white;" onclick="window.movimentar('${v.id}','${p.nome}','${v.descricao}',${v.quantidade},'SAÍDA')" title="Saída"><i class="fas fa-arrow-down"></i></button>
-                            ${userRole === 'admin' ? `
-                                <button class="btn btn-sm" style="background:var(--gray); color:white;" onclick="window.editarVol('${v.id}','${v.descricao}','${v.codigo}')"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-sm" style="background:black; color:white;" onclick="window.deletarItem('${v.id}', 'volumes', '${v.descricao}')"><i class="fas fa-trash"></i></button>
-                            ` : ''}
+                            <button class="btn btn-sm" style="background:var(--info); color:white;" onclick="window.ajustarQtd('${pId}','${v.codigo}','${p.nome}','${v.descricao}',${v.quantidade},'ENTRADA')"><i class="fas fa-arrow-up"></i></button>
+                            <button class="btn btn-sm" style="background:var(--danger); color:white;" onclick="window.ajustarQtd('${pId}','${v.codigo}','${p.nome}','${v.descricao}',${v.quantidade},'SAÍDA')"><i class="fas fa-arrow-down"></i></button>
                         </div>
                     </td>
                 </tr>
@@ -121,64 +115,75 @@ async function refresh() {
     window.filtrar();
 }
 
-// --- LÓGICA DE MOVIMENTAÇÃO (ENTRADA/SAÍDA) ---
-window.movimentar = async (id, pNome, vDesc, qtdAtual, tipo) => {
-    if(userRole === 'leitor') return alert("Acesso negado.");
-    const val = prompt(`${tipo} no volume: ${vDesc}\nQtd Atual: ${qtdAtual}\nDigite a quantidade:`);
-    if(!val || isNaN(val)) return;
-    
-    const qtdInformada = parseInt(val);
-    let novaQtd = (tipo === 'ENTRADA') ? (qtdAtual + qtdInformada) : (qtdAtual - qtdInformada);
-
-    if(novaQtd < 0) return alert("Estoque insuficiente!");
-
-    await updateDoc(doc(db, "volumes", id), { quantidade: novaQtd });
-    await registrarMov(tipo, pNome, vDesc, qtdInformada, qtdAtual, novaQtd);
-    
-    refresh();
-};
-
+// Lógica de busca refinada
 window.filtrar = () => {
     const fCod = document.getElementById("filtroCod").value.toLowerCase();
     const fForn = document.getElementById("filtroForn").value;
     const fDesc = document.getElementById("filtroDesc").value.toLowerCase();
 
-    localStorage.setItem("f_cod", fCod);
-    localStorage.setItem("f_forn", fForn);
-    localStorage.setItem("f_desc", fDesc);
-
     document.querySelectorAll(".prod-row").forEach(row => {
         const pId = row.dataset.id;
-        const textoProd = row.innerText.toLowerCase();
-        const fornId = row.dataset.forn;
-        
-        let matchSKU = false;
+        const pCod = row.dataset.cod.toLowerCase();
+        const pText = row.innerText.toLowerCase();
+        const pForn = row.dataset.forn;
+
+        let matchVolume = false;
+        let expandir = false;
+
         document.querySelectorAll(`.child-${pId}`).forEach(vRow => {
-            if(vRow.dataset.sku.toLowerCase().includes(fCod) && fCod !== "") matchSKU = true;
+            const sku = vRow.dataset.sku.toLowerCase();
+            const vText = vRow.innerText.toLowerCase();
+            
+            const batidaSKU = (fCod !== "" && sku.includes(fCod));
+            const batidaDesc = (fDesc !== "" && vText.includes(fDesc));
+
+            if(batidaSKU || batidaDesc) {
+                matchVolume = true;
+                expandir = true; // Se achou o volume pelo código dele, expande o pai
+            }
         });
 
-        const exibir = (fForn === "" || fornId === fForn) && 
-                       (textoProd.includes(fDesc) || matchSKU) &&
-                       (textoProd.includes(fCod) || matchSKU);
+        const batidaPaiCod = (fCod !== "" && pCod.includes(fCod));
+        const batidaPaiDesc = (fDesc !== "" && pText.includes(fDesc));
+        const batidaForn = (fForn === "" || pForn === fForn);
+
+        const exibir = batidaForn && (batidaPaiCod || batidaPaiDesc || matchVolume);
         
         row.style.display = exibir ? "table-row" : "none";
-        if(exibir && (fCod !== "" || fDesc !== "")) window.toggleVols(pId, true);
+        
+        // Regra de expansão: se buscou código de volume, abre. Se buscou código de produto, mantém fechado.
+        window.toggleVols(pId, expandir);
     });
 };
 
-window.toggleVols = (pId, forceOpen = false) => {
-    document.querySelectorAll(`.child-${pId}`).forEach(el => {
-        if(forceOpen) el.classList.add('active');
-        else el.classList.toggle('active');
+// Ajuste de quantidade unificado (atualiza o primeiro volume encontrado com aquele SKU)
+window.ajustarQtd = async (pId, sku, pNome, vDesc, qtdAtual, tipo) => {
+    if(userRole === 'leitor') return;
+    const val = prompt(`${tipo} - ${vDesc}\nQuantidade:`);
+    if(!val || isNaN(val)) return;
+
+    const vSnap = await getDocs(collection(db, "volumes"));
+    let docIdParaEditar = null;
+    vSnap.forEach(d => {
+        if(d.data().produtoId === pId && d.data().codigo === sku) docIdParaEditar = d.id;
     });
+
+    if(docIdParaEditar) {
+        const nQtd = (tipo === 'ENTRADA') ? (qtdAtual + parseInt(val)) : (qtdAtual - parseInt(val));
+        if(nQtd < 0) return alert("Estoque insuficiente!");
+        
+        await updateDoc(doc(db, "volumes", docIdParaEditar), { quantidade: nQtd });
+        await registrarMov(tipo, pNome, vDesc, val, qtdAtual, nQtd);
+        refresh();
+    }
 };
 
-window.modalVolume = (pId, pNome) => {
-    document.getElementById("modalTitle").innerText = `Novo Volume: ${pNome}`;
+window.modalNovoVolume = (pId, pNome) => {
+    document.getElementById("modalTitle").innerText = `Novo Volume para ${pNome}`;
     document.getElementById("modalBody").innerHTML = `
-        <label>SKU (Cód. Volume):</label><input type="text" id="vCod">
-        <label>Descrição:</label><input type="text" id="vDesc">
-        <label>Qtd Inicial:</label><input type="number" id="vQtd" value="1">
+        <label>SKU (CÓDIGO)</label><input type="text" id="vCod">
+        <label>DESCRIÇÃO</label><input type="text" id="vDesc">
+        <label>QUANTIDADE</label><input type="number" id="vQtd" value="1">
     `;
     document.getElementById("modalMaster").style.display = "flex";
     document.getElementById("btnModalConfirm").onclick = async () => {
@@ -190,21 +195,25 @@ window.modalVolume = (pId, pNome) => {
             enderecoId: "", dataAlt: serverTimestamp()
         };
         await addDoc(collection(db, "volumes"), v);
-        await registrarMov("CADASTRO", pNome, v.descricao, v.quantidade, 0, v.quantidade);
         window.fecharModal(); refresh();
     };
 };
 
-window.deletarItem = async (id, col, desc) => {
-    if(confirm(`Excluir permanentemente "${desc}"?`)) {
-        await deleteDoc(doc(db, col, id));
-        refresh();
+window.toggleVols = (pId, force = null) => {
+    const rows = document.querySelectorAll(`.child-${pId}`);
+    const icon = document.querySelector(`tr[data-id="${pId}"] i`);
+    rows.forEach(r => {
+        if(force !== null) force ? r.classList.add('active') : r.classList.remove('active');
+        else r.classList.toggle('active');
+    });
+    if(icon && rows[0]) {
+        icon.className = rows[0].classList.contains('active') ? "fas fa-chevron-down" : "fas fa-chevron-right";
     }
 };
 
 window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
 window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
-window.limparFiltros = () => { localStorage.clear(); location.reload(); };
+window.limparFiltros = () => { document.querySelectorAll('input').forEach(i => i.value=""); document.querySelector('select').value=""; window.filtrar(); };
 
 document.getElementById("btnSaveProd").onclick = async () => {
     const n = document.getElementById("newNome").value.toUpperCase();
