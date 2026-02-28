@@ -22,8 +22,10 @@ onAuthStateChanged(auth, async user => {
             const btnEnd = document.getElementById("btnNovoEnd");
             if(btnEnd) btnEnd.style.display = (userRole === 'admin') ? 'block' : 'none';
         }
-        const display = document.getElementById("userDisplay");
+        // Corrigido para bater com o ID do seu HTML
+        const display = document.getElementById("userDisplay"); 
         if(display) display.innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB} (${userRole.toUpperCase()})`;
+        
         loadAll();
     } else { 
         window.location.href = "index.html"; 
@@ -49,16 +51,8 @@ async function loadAll() {
             };
         });
 
-        const fSel = document.getElementById("filtroForn");
-        if(fSel) {
-            fSel.innerHTML = '<option value="">Todos os Fornecedores</option>';
-            Object.values(dbState.fornecedores).sort().forEach(nome => {
-                fSel.innerHTML += `<option value="${nome.toLowerCase()}">${nome}</option>`;
-            });
-        }
-
         await syncUI();
-    } catch (e) { console.error("Erro ao carregar dados:", e); }
+    } catch (e) { console.error("Erro ao carregar:", e); }
 }
 
 async function syncUI() {
@@ -74,9 +68,9 @@ async function syncUI() {
     renderEnderecos();
 }
 
-// --- FUNÇÃO RENDERIZAR PENDENTES (UNIFICADA E CORRIGIDA) ---
+// --- PENDENTES (Lógica de "Falta Endereçar") ---
 function renderPendentes() {
-    const area = document.getElementById("listaPendentes");
+    const area = document.getElementById("pendentesArea"); // ID corrigido para bater com seu HTML
     const count = document.getElementById("countPendentes");
     if(!area) return;
 
@@ -85,15 +79,15 @@ function renderPendentes() {
     if(count) count.innerText = pendentes.length;
     
     area.innerHTML = pendentes.map(v => {
-        const p = dbState.produtos[v.produtoId] || {nome:"Produto Não Encontrado"};
+        const p = dbState.produtos[v.produtoId] || {nome:"Produto não encontrado"};
         return `
-            <div class="vol-item-pendente" style="background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin-bottom:8px; border-left:4px solid var(--warning);">
+            <div class="vol-item-pendente" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-bottom:10px; border-left:4px solid var(--warning);">
                 <div style="flex:1">
                     <strong style="color:white;">${p.nome}</strong><br>
-                    <small style="color:#ccc;">${v.descricao} | Qtd: ${v.quantidade}</small>
+                    <small style="color:#aaa;">${v.descricao} | Qtd: ${v.quantidade}</small>
                 </div>
                 ${userRole !== 'leitor' ? 
-                    `<button onclick="window.abrirModalMover('${v.id}')" style="background:var(--warning); border:none; border-radius:3px; cursor:pointer; padding:5px 10px; font-weight:bold;">MOVER</button>` : ''}
+                    `<button onclick="window.abrirModalMover('${v.id}')" style="background:var(--warning); border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">ENDEREÇAR</button>` : ''}
             </div>
         `;
     }).join('');
@@ -123,8 +117,8 @@ function renderEnderecos() {
                     </div>
                     ${userRole !== 'leitor' ? `
                         <div class="actions">
-                            <button onclick="window.abrirModalMover('${v.id}')" title="Mover"><i class="fas fa-exchange-alt"></i></button>
-                            <button onclick="window.darSaida('${v.id}', '${v.descricao}', ${v.quantidade})" style="color:var(--danger)" title="Saída"><i class="fas fa-sign-out-alt"></i></button>
+                            <button onclick="window.abrirModalMover('${v.id}')"><i class="fas fa-exchange-alt"></i></button>
+                            <button onclick="window.darSaida('${v.id}', '${v.descricao}', ${v.quantidade})" style="color:var(--danger)"><i class="fas fa-sign-out-alt"></i></button>
                         </div>
                     ` : ''}
                 </div>`;
@@ -133,8 +127,8 @@ function renderEnderecos() {
         card.dataset.busca = buscaTxt;
         card.innerHTML = `
             <div class="card-header">
-                <span>RUA ${end.rua} - MOD ${end.modulo}</span>
-                ${userRole === 'admin' ? `<i class="fas fa-trash" onclick="window.deletarLocal('${end.id}')" style="cursor:pointer; font-size:12px; opacity:0.6;"></i>` : ''}
+                RUA ${end.rua} - MOD ${end.modulo}
+                ${userRole === 'admin' ? `<i class="fas fa-trash" onclick="window.deletarLocal('${end.id}')" style="float:right; cursor:pointer; font-size:12px;"></i>` : ''}
             </div>
             ${htmlVols || '<div style="text-align:center; padding:10px; color:#999;">Vazio</div>'}
         `;
@@ -143,25 +137,28 @@ function renderEnderecos() {
     window.filtrarEstoque();
 }
 
-// --- MODAIS E AÇÕES ---
+// --- FUNÇÕES GLOBAIS ---
 window.abrirModalMover = (volId) => {
+    if(userRole === 'leitor') return;
     const vol = dbState.volumes.find(v => v.id === volId);
     const p = dbState.produtos[vol.produtoId];
     
-    document.getElementById("modalTitle").innerText = "Endereçar Volume";
+    document.getElementById("modalTitle").innerText = "Movimentar / Endereçar";
     document.getElementById("modalMaster").style.display = "flex";
     document.getElementById("modalBody").innerHTML = `
         <input type="hidden" id="modalVolId" value="${volId}">
-        <p style="margin-bottom:10px;"><strong>Item:</strong> ${p.nome}<br><small>${vol.descricao}</small></p>
-        <label>Quantidade a Mover (Disponível: ${vol.quantidade}):</label>
-        <input type="number" id="qtdMover" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; margin-bottom:15px;">
-        
-        <label>Destino:</label>
-        <select id="selDestino" style="width:100%;">
+        <p style="color:white"><strong>Item:</strong> ${p.nome} (${vol.descricao})</p>
+        <label style="color:white">Quantidade (Disponível: ${vol.quantidade}):</label>
+        <input type="number" id="qtdMover" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; margin:10px 0;">
+        <label style="color:white">Destino:</label>
+        <select id="selDestino" style="width:100%; padding:8px;">
             <option value="">-- Selecione o Endereço --</option>
             ${dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo}</option>`).join('')}
         </select>
     `;
+    // Configura o botão de salvar do seu modal
+    const btnSalvar = document.querySelector("#modalMaster .btn:not([onclick*='fechar'])");
+    btnSalvar.onclick = window.confirmarMovimentacao;
 };
 
 window.confirmarMovimentacao = async () => {
@@ -169,12 +166,12 @@ window.confirmarMovimentacao = async () => {
     const destId = document.getElementById("selDestino").value;
     const qtdMover = parseInt(document.getElementById("qtdMover").value);
 
-    if (!destId || isNaN(qtdMover) || qtdMover <= 0) return alert("Dados inválidos!");
+    if (!destId || isNaN(qtdMover) || qtdMover <= 0) return alert("Preencha todos os campos!");
 
     const volOrigem = dbState.volumes.find(v => v.id === volId);
-    if(qtdMover > volOrigem.quantidade) return alert("Quantidade insuficiente!");
 
     try {
+        // Lógica de Junção Profissional
         const destinoExistente = dbState.volumes.find(v => 
             v.enderecoId === destId && 
             v.produtoId === volOrigem.produtoId && 
@@ -182,23 +179,21 @@ window.confirmarMovimentacao = async () => {
         );
 
         if (destinoExistente) {
-            await updateDoc(doc(db, "volumes", destinoExistente.id), {
-                quantidade: increment(qtdMover)
-            });
+            await updateDoc(doc(db, "volumes", destinoExistente.id), { quantidade: increment(qtdMover) });
         } else {
             await addDoc(collection(db, "volumes"), {
-                produtoId: volOrigem.produtoId,
-                codigo: volOrigem.codigo,
-                descricao: volOrigem.descricao,
+                ...volOrigem,
+                id: null,
                 quantidade: qtdMover,
                 enderecoId: destId,
                 dataMov: serverTimestamp()
             });
         }
 
-        const novaQtd = volOrigem.quantidade - qtdMover;
-        await updateDoc(doc(db, "volumes", volId), {
-            quantidade: novaQtd
+        const sobra = volOrigem.quantidade - qtdMover;
+        await updateDoc(doc(db, "volumes", volId), { 
+            quantidade: sobra,
+            enderecoId: sobra <= 0 && volOrigem.enderecoId === "" ? "REMOVIDO" : volOrigem.enderecoId 
         });
 
         window.fecharModal();
@@ -206,50 +201,34 @@ window.confirmarMovimentacao = async () => {
     } catch (e) { console.error(e); }
 };
 
+window.darSaida = async (id, desc, qtdAtual) => {
+    if(userRole === 'leitor') return;
+    const q = prompt(`Saída de: ${desc}\nQtd disponível: ${qtdAtual}\nDigite a quantidade:`);
+    const qtd = parseInt(q);
+    if(qtd > 0 && qtd <= qtdAtual) {
+        await updateDoc(doc(db, "volumes", id), { quantidade: increment(-qtd) });
+        loadAll();
+    } else if(q) { alert("Quantidade inválida!"); }
+};
+
 window.novoEndereco = () => {
-    document.getElementById("modalTitle").innerText = "Novo Endereço";
+    if(userRole !== 'admin') return;
+    document.getElementById("modalTitle").innerText = "Novo Local de Armazenagem";
     document.getElementById("modalMaster").style.display = "flex";
     document.getElementById("modalBody").innerHTML = `
-        <label>Rua:</label>
-        <input type="text" id="newRua" placeholder="Ex: A" style="width:100%; margin-bottom:10px;">
-        <label>Módulo:</label>
-        <input type="number" id="newMod" placeholder="Ex: 1" style="width:100%;">
+        <input type="text" id="newRua" placeholder="Rua (Ex: A)" style="width:100%; margin-bottom:10px; text-transform:uppercase;">
+        <input type="number" id="newMod" placeholder="Módulo (Ex: 10)" style="width:100%;">
     `;
-    // Altera o botão de salvar do modal para a função de endereço
-    const btnSalvar = document.querySelector(".modal-content .btn:not([onclick*='fechar'])");
-    btnSalvar.onclick = window.salvarEndereco;
-};
-
-window.salvarEndereco = async () => {
-    const rua = document.getElementById("newRua").value.toUpperCase();
-    const mod = document.getElementById("newMod").value;
-    if(!rua || !mod) return alert("Preencha tudo!");
-    
-    await addDoc(collection(db, "enderecos"), { rua, modulo: parseInt(mod) });
-    window.fecharModal();
-    loadAll();
-};
-
-window.darSaida = async (id, desc, qtdAtual) => {
-    const q = prompt(`Dar saída em: ${desc}\nQtd disponível: ${qtdAtual}\n\nQuanto deseja retirar?`);
-    const qtdSaindo = parseInt(q);
-
-    if(qtdSaindo > 0 && qtdSaindo <= qtdAtual) {
-        await updateDoc(doc(db, "volumes", id), { 
-            quantidade: increment(-qtdSaindo) 
-        });
-        loadAll();
-    } else if(q !== null) {
-        alert("Quantidade inválida!");
-    }
-};
-
-window.deletarLocal = async (id) => {
-    if(userRole !== 'admin') return;
-    if(confirm("Excluir endereço permanentemente? Os volumes nele ficarão sem endereço.")) {
-        await deleteDoc(doc(db, "enderecos", id));
-        loadAll();
-    }
+    const btnSalvar = document.querySelector("#modalMaster .btn:not([onclick*='fechar'])");
+    btnSalvar.onclick = async () => {
+        const rua = document.getElementById("newRua").value.toUpperCase();
+        const mod = document.getElementById("newMod").value;
+        if(rua && mod) {
+            await addDoc(collection(db, "enderecos"), { rua, modulo: parseInt(mod) });
+            window.fecharModal();
+            loadAll();
+        }
+    };
 };
 
 window.filtrarEstoque = () => {
