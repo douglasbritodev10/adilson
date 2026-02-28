@@ -2,106 +2,86 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WMS Simonetti - Estoque Glass</title>
+  <title>Simonetti - Glass Edition</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     :root {
-      --primary: #004a99; --glass: rgba(255, 255, 255, 0.85);
-      --glass-blue: rgba(0, 74, 153, 0.1); --danger: #ff4d4d;
-      --success: #00c853; --warning: #ffab00;
+      --primary: #004a99; --glass: rgba(255, 255, 255, 0.88);
+      --danger: #ff4d4d; --success: #00c853; --warning: #ffab00;
     }
-    
     body { 
       background: linear-gradient(135deg, #001f3f 0%, #004a99 100%);
-      background-attachment: fixed;
-      margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; color: #333;
+      background-attachment: fixed; margin: 0; font-family: 'Segoe UI', sans-serif; 
+      height: 100vh; overflow: hidden; color: #333;
     }
 
-    /* Topo: Voltar Esquerda / Sair Direita */
+    /* Top Nav: Voltar Esquerda / Sair Direita */
     .top-nav { 
-      background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(10px);
-      color: white; padding: 10px 25px; display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 1px solid rgba(255,255,255,0.2);
+      background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(15px);
+      padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
-    .user-tag { background: rgba(255,255,255,0.2); padding: 6px 15px; border-radius: 20px; font-size: 13px; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); color: #fff; }
+    .user-badge { background: rgba(255,255,255,0.15); padding: 6px 15px; border-radius: 20px; color: white; font-weight: bold; font-size: 13px; border: 1px solid rgba(255,255,255,0.2); }
 
     .main-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; padding: 20px; height: calc(100vh - 65px); box-sizing: border-box; }
 
     /* Painéis Estilo Vidro */
     .glass-panel { 
-      background: var(--glass); backdrop-filter: blur(15px); 
-      border-radius: 15px; border: 1px solid rgba(255,255,255,0.4);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden;
+      background: var(--glass); backdrop-filter: blur(20px); border-radius: 15px; 
+      border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      display: flex; flex-direction: column; overflow: hidden;
     }
-
-    .panel-header { background: rgba(0, 74, 153, 0.9); color: white; padding: 15px; font-weight: bold; text-align: center; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+    .panel-header { background: rgba(0, 74, 153, 0.9); color: white; padding: 12px; font-weight: bold; text-align: center; font-size: 12px; text-transform: uppercase; }
 
     /* Cards Retráteis */
-    .card-endereco { background: white; margin: 10px; border-radius: 12px; overflow: hidden; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .addr-summary { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #fff; transition: 0.2s; }
+    .card-endereco { background: white; margin: 8px 12px; border-radius: 10px; border: 1px solid #ddd; overflow: hidden; }
+    .addr-summary { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
     .addr-summary:hover { background: #f0f7ff; }
     .addr-details { display: none; padding: 10px; background: #fafafa; border-top: 1px solid #eee; }
     .addr-details.active { display: block; }
 
-    /* Itens dentro do endereço */
-    .item-linha { padding: 12px; border-bottom: 1px solid #eee; background: white; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid var(--primary); }
-    .fornecedor-badge { color: var(--danger); font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+    .item-linha { padding: 10px; border-bottom: 1px solid #eee; margin-bottom: 5px; border-left: 4px solid var(--primary); background: white; border-radius: 4px; }
+    .forn-tag { color: var(--danger); font-size: 10px; font-weight: 900; text-transform: uppercase; }
 
-    .btn-action { border: none; border-radius: 6px; padding: 8px 15px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 12px; }
-    input, select { padding: 10px; border-radius: 8px; border: 1px solid #ccc; outline: none; }
-    
-    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display:none; align-items:center; justify-content:center; z-index:1000; }
-    .modal-content { background: white; padding: 30px; border-radius: 20px; width: 420px; }
+    /* Botões e Inputs */
+    .btn { border: none; border-radius: 6px; padding: 8px 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    input, select { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+
+    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display:none; align-items:center; justify-content:center; z-index:1000; }
+    .modal-content { background: white; padding: 25px; border-radius: 15px; width: 400px; }
   </style>
 </head>
 <body>
 
   <div class="top-nav">
+    <button onclick="location.href='dashboard.html'" class="btn" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.3);">
+      <i class="fas fa-arrow-left"></i> VOLTAR
+    </button>
     <div style="display: flex; gap: 15px; align-items: center;">
-      <button onclick="location.href='dashboard.html'" class="btn-action" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4);">
-        <i class="fas fa-arrow-left"></i> VOLTAR
-      </button>
-      <h2 style="margin:0; font-size: 18px; color: var(--warning);">WMS SIMONETTI</h2>
-    </div>
-    <div style="display: flex; gap: 20px; align-items: center;">
-      <div class="user-tag" id="userDisplay"><i class="fas fa-user-circle"></i> AGUARDANDO...</div>
-      <button onclick="window.logout()" class="btn-action" style="background:var(--danger); color:white;">SAIR</button>
+      <div class="user-badge" id="userDisplay"><i class="fas fa-user"></i> CARREGANDO...</div>
+      <button onclick="window.logout()" class="btn" style="background:var(--danger); color:white;">SAIR</button>
     </div>
   </div>
 
   <div class="main-layout">
     <div class="glass-panel">
-      <div class="panel-header"><i class="fas fa-boxes"></i> AGUARDANDO ENDEREÇO</div>
-      <div id="listaPendentes" style="overflow-y: auto; padding: 10px; flex-grow:1;"></div>
+      <div class="panel-header">PRODUTOS PENDENTES</div>
+      <div id="listaPendentes" style="overflow-y: auto; padding: 10px;"></div>
     </div>
 
-    <div style="overflow-y: auto; padding-right: 5px;">
-      
-      <div class="glass-panel" style="margin-bottom: 15px; padding: 15px; flex-direction: row; gap: 15px; align-items: flex-end;">
-        <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:10px; font-weight:bold;">RUA</label><input type="text" id="addRua" placeholder="01" style="width:50px;"></div>
-        <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:10px; font-weight:bold;">MOD</label><input type="text" id="addMod" placeholder="001" style="width:70px;"></div>
-        <div style="display:flex; flex-direction:column; gap:5px;"><label style="font-size:10px; font-weight:bold;">NÍVEL</label><input type="text" id="addNiv" placeholder="01" style="width:50px;"></div>
-        <button onclick="window.criarEndereco()" class="btn-action" style="background:var(--primary); color:white; height:38px;">+ CADASTRAR LOCAL</button>
+    <div style="overflow-y: auto;">
+      <div class="glass-panel" style="margin-bottom: 15px; padding: 15px; flex-direction: row; gap: 10px; align-items: flex-end;">
+          <div><label style="font-size:10px; font-weight:bold;">RUA</label><br><input type="text" id="addRua" style="width:50px;"></div>
+          <div><label style="font-size:10px; font-weight:bold;">MOD</label><br><input type="text" id="addMod" style="width:70px;"></div>
+          <div><label style="font-size:10px; font-weight:bold;">NÍV</label><br><input type="text" id="addNiv" style="width:50px;"></div>
+          <button onclick="window.criarEndereco()" class="btn" style="background:var(--primary); color:white;">+ CADASTRAR</button>
       </div>
 
-      <div class="glass-panel" style="margin-bottom: 15px; padding: 15px; flex-direction: row; gap: 12px;">
-        <div style="display:flex; flex-direction:column; gap:5px;">
-          <label style="font-size:10px; font-weight:bold;">CÓDIGO SKU</label>
-          <input type="text" id="filtroCod" placeholder="SKU..." onkeyup="window.filtrarEstoque()" style="width:100px;">
-        </div>
-        <div style="display:flex; flex-direction:column; gap:5px; flex-grow:1;">
-          <label style="font-size:10px; font-weight:bold;">FORNECEDOR</label>
-          <select id="filtroForn" onchange="window.filtrarEstoque()" style="background:#fff8e1; font-weight:bold;"></select>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:5px; flex-grow:2;">
-          <label style="font-size:10px; font-weight:bold;">DESCRIÇÃO DO PRODUTO</label>
-          <input type="text" id="filtroDesc" placeholder="Busque pelo nome..." onkeyup="window.filtrarEstoque()">
-        </div>
-        <div style="display:flex; flex-direction:column; gap:5px; width:60px;">
-          <label style="font-size:10px; font-weight:bold;">LOCAIS</label>
-          <div id="countDisplay" style="background:var(--primary); color:white; padding:10px; border-radius:8px; font-weight:bold; text-align:center;">0</div>
-        </div>
+      <div class="glass-panel" style="margin-bottom: 15px; padding: 15px; flex-direction: row; gap: 10px;">
+          <input type="text" id="filtroCod" placeholder="SKU" onkeyup="window.filtrarEstoque()" style="width:80px;">
+          <select id="filtroForn" onchange="window.filtrarEstoque()" style="flex:1;"></select>
+          <input type="text" id="filtroDesc" placeholder="Produto..." onkeyup="window.filtrarEstoque()" style="flex:2;">
+          <div id="countDisplay" style="background:var(--primary); color:white; padding:8px 15px; border-radius:5px; font-weight:bold;">0</div>
       </div>
 
       <div id="gridEnderecos"></div>
@@ -110,11 +90,11 @@
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top:0; color:var(--primary);">Ação</h3>
+      <h3 id="modalTitle">Ação</h3>
       <div id="modalBody"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-        <button onclick="fecharModal()" class="btn-action" style="background:#ccc;">CANCELAR</button>
-        <button id="btnConfirmar" class="btn-action btn-success">CONFIRMAR</button>
+        <button onclick="fecharModal()" class="btn" style="background:#ccc;">CANCELAR</button>
+        <button id="btnConfirmar" class="btn btn-success">CONFIRMAR</button>
       </div>
     </div>
   </div>
