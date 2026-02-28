@@ -13,26 +13,35 @@
       background: linear-gradient(135deg, #001f3f 0%, #004a99 100%);
       background-attachment: fixed; margin: 0; font-family: 'Segoe UI', sans-serif; min-height: 100vh;
     }
-    .top-nav { background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; color: white; border-bottom: 1px solid rgba(255,255,255,0.1); sticky; top:0; z-index:10; }
+    .top-nav { background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; color: white; border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top:0; z-index:10; }
     .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
     .glass-panel { background: var(--glass); padding: 20px; border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin-bottom: 20px; }
     
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
-    th { background: #f8f9fa; color: var(--primary); padding: 15px; text-align: left; font-size: 12px; border-bottom: 2px solid #eee; }
+    th { background: #f8f9fa; color: var(--primary); padding: 15px; text-align: left; font-size: 12px; border-bottom: 2px solid #eee; text-transform: uppercase; }
     td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 14px; }
     
-    .prod-row { cursor: pointer; transition: 0.2s; }
+    .prod-row { cursor: pointer; transition: 0.2s; background: #fff; }
     .prod-row:hover { background: #f1f7ff; }
-    .child-row { background: #fafafa; display: none; }
-    .child-row.active { display: table-row; }
     
-    .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; transition: 0.3s; display: inline-flex; align-items: center; gap: 5px; }
-    .btn-sm { padding: 5px 8px; font-size: 12px; }
+    /* Estilo das linhas de volume (filhas) */
+    .child-row { background: #fdfdfd; display: none; border-left: 4px solid var(--primary); }
+    .child-row td { font-size: 13px; color: #444; padding-top: 8px; padding-bottom: 8px; }
+    .child-row.active { display: table-row; animation: fadeIn 0.3s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .btn { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; transition: 0.3s; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-action { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 5px; transition: transform 0.2s; }
+    .btn-action:hover { transform: scale(1.2); }
+    
     input, select { padding: 10px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
     
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    /* Modal */
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
     .modal-content { background: white; padding: 25px; border-radius: 10px; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    .badge-qty { background: var(--primary); color: white; padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+    .modal-body { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; }
+    .badge-qty { background: var(--primary); color: white; padding: 3px 10px; border-radius: 12px; font-weight: bold; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -44,11 +53,11 @@
   </div>
 
   <div class="container">
-    <div id="painelCadastro" class="glass-panel" style="display:none; gap:10px; flex-wrap: wrap;">
+    <div id="painelCadastro" class="glass-panel" style="display:none; gap:10px;">
       <select id="selForn" style="flex:1;"></select>
       <input type="text" id="newCod" placeholder="Cód. Produto" style="flex:1;">
       <input type="text" id="newNome" placeholder="Nome do Produto..." style="flex:2;">
-      <button id="btnSaveProd" class="btn" style="background:var(--success); color:white;"><i class="fas fa-plus"></i> CADASTRAR</button>
+      <button id="btnSaveProd" class="btn" style="background:var(--success); color:white;"><i class="fas fa-plus"></i></button>
     </div>
 
     <div class="glass-panel" style="display:flex; gap:10px; align-items:center;">
@@ -67,8 +76,8 @@
             <th style="width:120px;">CÓDIGO</th>
             <th>FORNECEDOR</th>
             <th>DESCRIÇÃO PRODUTO</th>
-            <th style="text-align:center;">ESTOQUE</th>
-            <th style="text-align:right; padding-right:20px;">AÇÕES</th>
+            <th style="text-align:center;">ESTOQUE TOTAL</th>
+            <th style="text-align:right; width: 150px; padding-right:20px;">AÇÕES</th>
           </tr>
         </thead>
         <tbody id="tblEstoque"></tbody>
@@ -78,8 +87,8 @@
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top:0; color:var(--primary); border-bottom:2px solid #eee; padding-bottom:10px;">Ação</h3>
-      <div id="modalBody" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
+      <h3 id="modalTitle" style="margin:0; color:var(--primary); border-bottom:2px solid #eee; padding-bottom:10px;">Ação</h3>
+      <div id="modalBody" class="modal-body"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
         <button onclick="window.fecharModal()" class="btn" style="background:#eee;">CANCELAR</button>
         <button id="btnModalConfirm" class="btn" style="background:var(--primary); color:white;">CONFIRMAR</button>
