@@ -83,7 +83,7 @@
       <span style="color:white; font-weight:bold; letter-spacing: 1px;">SIMONETTI | ESTOQUE</span>
     </div>
     <div style="display:flex; gap:15px; align-items:center;">
-      <button id="btnNovoEnd" onclick="window.abrirNovoEndereco()" class="btn" style="background:var(--success); color:white; display:none;">+ NOVO ENDEREÇO</button>
+      <button id="btnNovoEnd" onclick="window.abrirModalNovoEnd()" class="btn" style="background:var(--success); color:white; display:none;">+ NOVO ENDEREÇO</button>
       <div id="userDisplay" class="user-badge">...</div>
       <button onclick="window.logout()" style="background:none; border:none; color:white; cursor:pointer;"><i class="fas fa-sign-out-alt"></i></button>
     </div>
@@ -114,15 +114,14 @@
   </div>
 
   <div id="modalMaster" class="modal">
-    <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top:0; color:var(--primary);">Ação</h3>
-      <div id="modalBody"></div>
-      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-        <button onclick="window.fecharModal()" class="btn">Cancelar</button>
-        <button id="btnConfirmar" class="btn" style="background:var(--primary); color:white;">Confirmar</button>
-      </div>
+  <div class="modal-content">
+    <h3 id="modalTitle" style="margin-top:0; color:var(--primary);">Ação</h3>
+    <div id="modalBody"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+      <button onclick="window.fecharModal()" class="btn" style="background:#6c757d; color:white;">CANCELAR</button>
     </div>
   </div>
+</div>
 
   <script type="module" src="js/estoque.js"></script>
 </body>
