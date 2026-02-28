@@ -8,14 +8,13 @@ let dbState = { fornecedores: {}, produtos: {}, enderecos: [], volumes: [] };
 
 onAuthStateChanged(auth, user => {
     if (user) {
-        document.getElementById("labelUser").innerText = `Logado como: ${user.email.split('@')[0].toUpperCase()}`;
+        document.getElementById("labelUser").innerText = `Logado: ${user.email.split('@')[0].toUpperCase()}`;
         loadAll();
     } else { window.location.href = "index.html"; }
 });
 
 async function loadAll() {
     try {
-        // Carrega Fornecedores
         const fSnap = await getDocs(collection(db, "fornecedores"));
         const selFiltro = document.getElementById("filtroForn");
         selFiltro.innerHTML = '<option value="">Todos os Fornecedores</option>';
@@ -25,34 +24,35 @@ async function loadAll() {
             selFiltro.innerHTML += `<option value="${nome}">${nome}</option>`;
         });
 
-        // Carrega Produtos
         const pSnap = await getDocs(collection(db, "produtos"));
         pSnap.forEach(d => {
             const p = d.data();
             dbState.produtos[d.id] = { 
-                nome: p.nome, 
-                cod: (p.codigo || "").toLowerCase(), 
-                forn: dbState.fornecedores[p.fornecedorId] || "S/ FORNECEDOR" 
+                nome: p.nome, cod: (p.codigo || "").toLowerCase(), 
+                forn: dbState.fornecedores[p.fornecedorId] || "S/ FORN" 
             };
         });
 
-        // Recupera filtros do LocalStorage
+        // RESTAURAÇÃO DOS FILTROS (INCLUINDO SELECT)
         document.getElementById("filtroCod").value = localStorage.getItem('f_est_cod') || "";
-        document.getElementById("filtroForn").value = localStorage.getItem('f_est_forn') || "";
         document.getElementById("filtroDesc").value = localStorage.getItem('f_est_desc') || "";
+        const savedForn = localStorage.getItem('f_est_forn') || "";
+        
+        // Timeout pequeno para garantir que o select foi preenchido antes de setar o valor
+        setTimeout(() => {
+            document.getElementById("filtroForn").value = savedForn;
+            window.filtrarEstoque();
+        }, 100);
 
         await syncUI();
-    } catch (e) { console.error("Erro no loadAll:", e); }
+    } catch (e) { console.error(e); }
 }
 
 async function syncUI() {
-    const qEnderecos = query(collection(db, "enderecos"), orderBy("rua"), orderBy("modulo"));
-    const eSnap = await getDocs(qEnderecos);
+    const eSnap = await getDocs(query(collection(db, "enderecos"), orderBy("rua"), orderBy("modulo")));
     const vSnap = await getDocs(collection(db, "volumes"));
-
     dbState.enderecos = eSnap.docs.map(d => ({id: d.id, ...d.data()}));
     dbState.volumes = vSnap.docs.map(d => ({id: d.id, ...d.data()}));
-
     renderPendentes();
     renderEnderecos();
 }
@@ -62,14 +62,13 @@ function renderPendentes() {
     lista.innerHTML = "";
     dbState.volumes.forEach(v => {
         if (v.quantidade > 0 && (!v.enderecoId || v.enderecoId === "")) {
-            const p = dbState.produtos[v.produtoId] || { nome: "Excluído", forn: "---" };
+            const p = dbState.produtos[v.produtoId] || { nome: "Produto", forn: "---" };
             lista.innerHTML += `
                 <div class="card-pendente">
                     <div class="fornecedor-tag">${p.forn}</div>
-                    <div style="font-size: 11px; color: #666;">${p.nome}</div>
-                    <div style="font-size: 13px; font-weight: bold; margin: 3px 0;">${v.descricao}</div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top:8px;">
-                        <span>Qtd: <b>${v.quantidade}</b></span>
+                    <div style="font-size: 12px; font-weight: bold;">${v.descricao}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top:5px;">
+                        <span>Qtd: ${v.quantidade}</span>
                         <button onclick="window.abrirModalMover('${v.id}')" class="btn-action btn-success">GUARDAR</button>
                     </div>
                 </div>`;
@@ -80,12 +79,9 @@ function renderPendentes() {
 function renderEnderecos() {
     const grid = document.getElementById("gridEnderecos");
     grid.innerHTML = "";
-
     dbState.enderecos.forEach(end => {
-        const volsNesteLocal = dbState.volumes.filter(v => v.enderecoId === end.id && v.quantidade > 0);
-        
-        // Atributo de busca consolidado
-        const infoBusca = volsNesteLocal.map(v => {
+        const vols = dbState.volumes.filter(v => v.enderecoId === end.id && v.quantidade > 0);
+        const infoBusca = vols.map(v => {
             const p = dbState.produtos[v.produtoId] || { nome: "", forn: "", cod: "" };
             return `${p.nome} ${v.descricao} ${p.forn} ${p.cod}`;
         }).join(" ").toLowerCase();
@@ -95,34 +91,60 @@ function renderEnderecos() {
         card.dataset.busca = infoBusca;
         card.innerHTML = `
             <div class="addr-header">
-                <span>RUA ${end.rua} - MOD ${end.modulo} ${end.nivel ? ' - NV '+end.nivel : ''}</span>
-                <i class="fas fa-trash" onclick="window.deletarLocal('${end.id}')" style="cursor:pointer; opacity:0.5;"></i>
+                <span>R:${end.rua} M:${end.modulo} N:${end.nivel || '0'} A:${end.apto || '0'}</span>
+                <i class="fas fa-trash-alt" onclick="window.deletarLocal('${end.id}')" style="cursor:pointer; color:#ff9999;"></i>
             </div>
-            <div style="padding: 10px; min-height: 40px;">
-                ${volsNesteLocal.map(v => {
-                    const p = dbState.produtos[v.produtoId] || { nome: "N/A", forn: "---" };
-                    return `
-                    <div style="border-bottom: 1px solid #eee; padding: 8px 0; margin-bottom: 5px;">
-                        <div class="fornecedor-tag" style="color:#d32f2f;">${p.forn}</div>
-                        <div style="font-size: 11px; font-weight:600;">${p.nome}</div>
-                        <div style="font-size: 12px; margin: 3px 0;"><b>${v.quantidade}x</b> ${v.descricao}</div>
-                        <div style="display: flex; gap: 5px; margin-top: 5px;">
-                            <button onclick="window.abrirModalMover('${v.id}')" style="flex:1; font-size: 10px; padding: 4px;">MOVER</button>
-                            <button onclick="window.darSaida('${v.id}')" style="flex:1; font-size: 10px; padding: 4px; color:white; background:#dc3545; border:none; border-radius:3px;">SAÍDA</button>
+            <div style="padding: 8px;">
+                ${vols.map(v => `
+                    <div style="border-bottom: 1px solid #eee; padding: 5px 0;">
+                        <div class="fornecedor-tag">${(dbState.produtos[v.produtoId] || {}).forn}</div>
+                        <div style="font-size: 11px;"><b>${v.quantidade}x</b> ${v.descricao}</div>
+                        <div style="display: flex; gap: 4px; margin-top: 4px;">
+                            <button onclick="window.abrirModalMover('${v.id}')" style="flex:1; font-size: 9px;">MOVER</button>
+                            <button onclick="window.darSaida('${v.id}')" style="flex:1; font-size: 9px; background:var(--danger); color:white; border:none; border-radius:2px;">SAÍDA</button>
                         </div>
-                    </div>`}).join('') || '<div style="color:#ccc; font-size:11px; text-align:center;">Vazio</div>'}
+                    </div>`).join('') || '<div style="color:#ccc; font-size:10px; text-align:center;">Vazio</div>'}
             </div>`;
         grid.appendChild(card);
     });
-    window.filtrarEstoque(); // Aplica filtros após renderizar
+    window.filtrarEstoque();
 }
+
+// CADASTRO DE ENDEREÇO COM VALIDAÇÃO DE DUPLICIDADE
+document.getElementById("btnCriarEndereco").onclick = async () => {
+    const rua = document.getElementById("addRua").value.trim().toUpperCase();
+    const mod = document.getElementById("addModulo").value.trim();
+    const niv = document.getElementById("addNivel").value.trim();
+    const apt = document.getElementById("addApto").value.trim();
+
+    if (!rua || !mod) return alert("Rua e Módulo são obrigatórios!");
+
+    // Checa se já existe no dbState
+    const existe = dbState.enderecos.find(e => e.rua === rua && e.modulo === mod && e.nivel === niv && e.apto === apt);
+    if (existe) return alert("Este endereço já está cadastrado!");
+
+    await addDoc(collection(db, "enderecos"), { rua, modulo: mod, nivel: niv, apto: apt, data: serverTimestamp() });
+    syncUI();
+    // Limpa campos
+    document.getElementById("addRua").value = ""; document.getElementById("addModulo").value = "";
+};
+
+window.deletarLocal = async (id) => {
+    if (confirm("Ao excluir, volumes deste local voltarão para a lista de Pendentes. Confirmar?")) {
+        const afetados = dbState.volumes.filter(v => v.enderecoId === id);
+        for (let v of afetados) {
+            await updateDoc(doc(db, "volumes", v.id), { enderecoId: "" });
+        }
+        await deleteDoc(doc(db, "enderecos", id));
+        syncUI();
+    }
+};
 
 window.filtrarEstoque = () => {
     const fCod = document.getElementById("filtroCod").value.toLowerCase();
-    const fForn = document.getElementById("filtroForn").value.toLowerCase();
+    const fForn = document.getElementById("filtroForn").value;
     const fDesc = document.getElementById("filtroDesc").value.toLowerCase();
 
-    // Persiste os filtros
     localStorage.setItem('f_est_cod', fCod);
     localStorage.setItem('f_est_forn', fForn);
     localStorage.setItem('f_est_desc', fDesc);
@@ -131,12 +153,11 @@ window.filtrarEstoque = () => {
     document.querySelectorAll(".card-endereco").forEach(card => {
         const txt = card.dataset.busca;
         const matchesCod = txt.includes(fCod);
-        const matchesForn = fForn === "" || txt.includes(fForn);
+        const matchesForn = fForn === "" || txt.includes(fForn.toLowerCase());
         const matchesDesc = txt.includes(fDesc);
 
         if (matchesCod && matchesForn && matchesDesc) {
-            card.style.display = "";
-            visiveis++;
+            card.style.display = ""; visiveis++;
         } else {
             card.style.display = "none";
         }
@@ -150,6 +171,10 @@ window.limparFiltros = () => {
     document.getElementById("filtroDesc").value = "";
     window.filtrarEstoque();
 };
+
+// ... Restante das funções de Mover, Saída e Logout permanecem as mesmas ...
+window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
+window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
 
 // MODAL DE SAÍDA SOFISTICADO (Preservado)
 window.darSaida = (volId) => {
