@@ -1,13 +1,31 @@
 import { db, auth } from "./firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { 
-    collection, addDoc, getDocs, deleteDoc, doc, updateDoc 
+    collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc 
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-// --- AUTH & SAUDAÇÃO ---
-onAuthStateChanged(auth, user => {
+let userRole = "leitor";
+
+// --- CONTROLE DE ACESSO ---
+onAuthStateChanged(auth, async user => {
     if (user) {
-        document.getElementById("labelUser").innerText = `Olá, ${user.email.split('@')[0].toUpperCase()}`;
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            userRole = (data.role || "leitor").toLowerCase();
+            
+            // Trava: Se não for admin, volta para o dashboard
+            if (userRole !== "admin") {
+                alert("Acesso restrito a administradores.");
+                window.location.href = "dashboard.html";
+                return;
+            }
+
+            const userName = data.nomeCompleto || user.email.split('@')[0].toUpperCase();
+            document.getElementById("labelUser").innerHTML = `<i class="fas fa-user-circle"></i> ${userName} (ADMIN)`;
+        }
         carregar();
     } else {
         window.location.href = "index.html";
@@ -16,47 +34,46 @@ onAuthStateChanged(auth, user => {
 
 document.getElementById("btnLogout").onclick = () => signOut(auth).then(() => window.location.href = "index.html");
 
-// --- MÁSCARAS DE INPUT ---
-const inputCnpj = document.getElementById("cnpjF");
-const inputTel = document.getElementById("telefoneF");
-
-inputCnpj.addEventListener('input', (e) => {
-    let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,3})(\d{0,3})(\d{0,4})(\d{0,2})/);
-    e.target.value = !x[2] ? x[1] : x[1] + '.' + x[2] + '.' + x[3] + '/' + x[4] + (x[5] ? '-' + x[5] : '');
-});
-
-inputTel.addEventListener('input', (e) => {
-    let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
-    e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
-});
+// --- MÁSCARAS ---
+const aplicarMascaraCnpj = (el) => {
+    el.addEventListener('input', (e) => {
+        let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,3})(\d{0,3})(\d{0,4})(\d{0,2})/);
+        e.target.value = !x[2] ? x[1] : x[1] + '.' + x[2] + '.' + x[3] + '/' + x[4] + (x[5] ? '-' + x[5] : '');
+    });
+};
+aplicarMascaraCnpj(document.getElementById("cnpjF"));
+aplicarMascaraCnpj(document.getElementById("editCnpj"));
 
 // --- CRUD ---
-
-const carregar = async () => {
+async function carregar() {
     const snap = await getDocs(collection(db, "fornecedores"));
-    const tbody = document.getElementById("listaF");
-    tbody.innerHTML = "";
-    
+    const lista = document.getElementById("listaF");
+    lista.innerHTML = "";
+
     snap.forEach(d => {
         const f = d.data();
-        tbody.innerHTML += `
+        lista.innerHTML += `
             <tr>
-                <td style="font-weight:bold">${f.nome}</td>
-                <td>${f.cnpj}</td>
-                <td>${f.email}</td>
-                <td>${f.telefone}</td>
+                <td style="font-weight:bold; color:var(--primary)">${f.nome}</td>
+                <td>${f.cnpj || '---'}</td>
+                <td>${f.email || '---'}</td>
+                <td>${f.telefone || '---'}</td>
                 <td style="text-align: right;">
-                    <button class="btn-action" style="background:var(--warning)" onclick="window.editarF('${d.id}', '${f.nome}')">✎</button>
-                    <button class="btn-action" style="background:var(--danger)" onclick="window.excluirF('${d.id}')">✕</button>
+                    <button class="btn-action" style="background:var(--warning)" onclick="window.abrirEdicao('${d.id}', \`${JSON.stringify(f)}\`)">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-action" style="background:var(--danger)" onclick="window.excluirF('${d.id}', '${f.nome}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             </tr>`;
     });
-};
+}
 
 document.getElementById("btnSalvarF").onclick = async () => {
-    const nome = document.getElementById("nomeF").value;
+    const nome = document.getElementById("nomeF").value.toUpperCase();
     const cnpj = document.getElementById("cnpjF").value;
-    const email = document.getElementById("emailF").value;
+    const email = document.getElementById("emailF").value.toLowerCase();
     const tel = document.getElementById("telefoneF").value;
 
     if(!nome) return alert("O nome do fornecedor é obrigatório!");
@@ -69,20 +86,35 @@ document.getElementById("btnSalvarF").onclick = async () => {
     carregar();
 };
 
-window.editarF = async (id, nomeAtual) => {
-    const novoNome = prompt("Novo nome para o fornecedor:", nomeAtual);
-    if(novoNome && novoNome !== nomeAtual) {
-        await updateDoc(doc(db, "fornecedores", id), { nome: novoNome });
+window.abrirEdicao = (id, dataJson) => {
+    const f = JSON.parse(dataJson);
+    document.getElementById("editNome").value = f.nome;
+    document.getElementById("editCnpj").value = f.cnpj || "";
+    document.getElementById("editEmail").value = f.email || "";
+    document.getElementById("editTel").value = f.telefone || "";
+    
+    document.getElementById("modalEdit").style.display = "flex";
+    
+    document.getElementById("btnConfirmarEdit").onclick = async () => {
+        await updateDoc(doc(db, "fornecedores", id), {
+            nome: document.getElementById("editNome").value.toUpperCase(),
+            cnpj: document.getElementById("editCnpj").value,
+            email: document.getElementById("editEmail").value.toLowerCase(),
+            telefone: document.getElementById("editTel").value
+        });
+        window.fecharModal();
         carregar();
-    }
+    };
 };
 
-window.excluirF = async (id) => {
-    if(confirm("Deseja remover este fornecedor?")) {
+window.excluirF = async (id, nome) => {
+    if(confirm(`Deseja remover permanentemente o fornecedor ${nome}?`)) {
         await deleteDoc(doc(db, "fornecedores", id));
         carregar();
     }
 };
+
+window.fecharModal = () => document.getElementById("modalEdit").style.display = "none";
 
 function limparCampos() {
     document.getElementById("nomeF").value = "";
