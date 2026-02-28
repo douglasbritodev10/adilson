@@ -23,7 +23,7 @@
     }
     .user-badge { background: rgba(255,255,255,0.15); padding: 6px 15px; border-radius: 20px; color: white; font-weight: bold; font-size: 13px; border: 1px solid rgba(255,255,255,0.2); }
 
-    .main-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; padding: 20px; height: calc(100vh - 65px); box-sizing: border-box; }
+    .main-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; padding: 20px; height: calc(100vh - 120px); box-sizing: border-box; }
 
     /* Painéis Estilo Vidro */
     .glass-panel { 
@@ -63,6 +63,10 @@
     </div>
   </div>
 
+  <h2 style="text-align: center; color: white; margin-top: 10px; text-transform: uppercase; letter-spacing: 2px;">
+      Controle de Estoque
+  </h2>
+
   <div class="main-layout">
     <div class="glass-panel">
       <div class="panel-header">PRODUTOS PENDENTES</div>
@@ -77,10 +81,15 @@
           <button onclick="window.criarEndereco()" class="btn" style="background:var(--primary); color:white;">+ CADASTRAR</button>
       </div>
 
-      <div class="glass-panel" style="margin-bottom: 15px; padding: 15px; flex-direction: row; gap: 10px;">
+      <div class="glass-panel" style="margin-bottom: 15px; padding: 15px; flex-direction: row; gap: 10px; align-items: center;">
           <input type="text" id="filtroCod" placeholder="SKU" onkeyup="window.filtrarEstoque()" style="width:80px;">
           <select id="filtroForn" onchange="window.filtrarEstoque()" style="flex:1;"></select>
           <input type="text" id="filtroDesc" placeholder="Produto..." onkeyup="window.filtrarEstoque()" style="flex:2;">
+          
+          <button onclick="window.limparFiltros()" class="btn" style="background: #6c757d; color: white;" title="Limpar Filtros">
+              <i class="fas fa-eraser"></i>
+          </button>
+
           <div id="countDisplay" style="background:var(--primary); color:white; padding:8px 15px; border-radius:5px; font-weight:bold;">0</div>
       </div>
 
@@ -93,8 +102,8 @@
       <h3 id="modalTitle">Ação</h3>
       <div id="modalBody"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-        <button onclick="fecharModal()" class="btn" style="background:#ccc;">CANCELAR</button>
-        <button id="btnConfirmar" class="btn btn-success">CONFIRMAR</button>
+        <button onclick="window.fecharModal()" class="btn" style="background:#ccc;">CANCELAR</button>
+        <button id="btnConfirmar" class="btn" style="background: var(--success); color: white;">CONFIRMAR</button>
       </div>
     </div>
   </div>
