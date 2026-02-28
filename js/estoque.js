@@ -55,7 +55,6 @@ async function loadAll() {
             const nomes = [...new Set(Object.values(dbState.fornecedores).map(f => f.nome))].sort();
             nomes.forEach(n => selForn.innerHTML += `<option value="${n}">${n}</option>`);
         }
-
         syncUI();
     } catch (e) { console.error("Erro no loadAll:", e); }
 }
@@ -68,32 +67,28 @@ function syncUI() {
     grid.innerHTML = "";
     pendentes.innerHTML = "";
 
-    // 1. LISTA PENDENTES
     const falta = dbState.volumes.filter(v => (!v.enderecoId || v.enderecoId === "") && v.quantidade > 0);
     document.getElementById("countPendentes").innerText = falta.length;
 
     falta.forEach(v => {
         const prod = dbState.produtos[v.produtoId] || { nome: "???", codigo: "???" };
         const forn = dbState.fornecedores[prod.fornecedorId] || { nome: "???" };
-        
         const div = document.createElement("div");
         div.className = "item-pendente";
         div.innerHTML = `
             <small style="color:var(--primary); font-weight:bold;">${forn.nome}</small><br>
-            <span style="font-size:11px;"><b>Prod: ${prod.codigo}</b></span><br>
-            <span style="font-size:12px;"><b>Vol: ${v.codigo || 'S/C'}</b> - ${v.descricao}</span><br>
+            <span style="font-size:11px;"><b>P: ${prod.codigo}</b></span><br>
+            <span style="font-size:12px;"><b>V: ${v.codigo || 'S/C'}</b> - ${v.descricao}</span><br>
             <small>Qtd: <b>${v.quantidade}</b></small>
             ${userRole !== 'leitor' ? `<button onclick="window.abrirAcao('${v.id}', 'guardar')" class="btn" style="background:var(--success); color:white; width:100%; margin-top:5px; padding:4px; font-size:10px;">GUARDAR</button>` : ''}
         `;
         pendentes.appendChild(div);
     });
 
-    // 2. GRID DE ENDEREÇOS
     dbState.enderecos.forEach(e => {
         const vols = dbState.volumes.filter(v => v.enderecoId === e.id && v.quantidade > 0);
         const card = document.createElement("div");
         card.className = "card-endereco";
-        
         let totalUnidades = 0;
         let htmlItens = "";
         let buscaTexto = `${e.rua} ${e.modulo} ${e.nivel} `.toLowerCase();
@@ -103,18 +98,17 @@ function syncUI() {
             const forn = dbState.fornecedores[prod.fornecedorId] || { nome: "???" };
             totalUnidades += v.quantidade;
             buscaTexto += `${prod.nome} ${prod.codigo} ${forn.nome} ${v.descricao} ${v.codigo || ''} `.toLowerCase();
-
             htmlItens += `
                 <div class="item-row">
                     <div class="item-info">
-                        <div style="font-size: 10px; color: var(--primary); font-weight: bold;">P: ${prod.codigo} - ${prod.nome}</div>
-                        <div style="font-size: 11px;"><b style="color:#333;">V: ${v.codigo || 'S/C'}</b> - ${v.descricao}</div>
+                        <div style="font-size: 10px; color: var(--primary); font-weight: bold;">P: ${prod.codigo}</div>
+                        <div style="font-size: 11px;"><b>V: ${v.codigo || 'S/C'}</b> - ${v.descricao}</div>
                         <div style="font-size: 10px; color: #666;">${forn.nome} | <b style="color:var(--success)">Qtd: ${v.quantidade}</b></div>
                     </div>
                     ${userRole !== 'leitor' ? `
                         <div style="display:flex; align-items: center; gap:5px;">
-                            <button onclick="window.abrirAcao('${v.id}', 'mover')" class="btn-mini" style="background:var(--info)" title="Mover"><i class="fas fa-exchange-alt"></i></button>
-                            <button onclick="window.abrirAcao('${v.id}', 'saida')" class="btn-mini" style="background:var(--danger)" title="Saída"><i class="fas fa-sign-out-alt"></i></button>
+                            <button onclick="window.abrirAcao('${v.id}', 'mover')" class="btn-mini" style="background:var(--info)"><i class="fas fa-exchange-alt"></i></button>
+                            <button onclick="window.abrirAcao('${v.id}', 'saida')" class="btn-mini" style="background:var(--danger)"><i class="fas fa-sign-out-alt"></i></button>
                         </div>
                     ` : ''}
                 </div>
@@ -149,13 +143,13 @@ window.abrirAcao = (volId, tipo) => {
             Item: <b>${vol.descricao}</b><br>Saldo Atual: <b>${vol.quantidade}</b>
         </div>
         <label>QUANTIDADE:</label>
-        <input type="number" id="qtdAcao" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; margin-bottom:15px;">
+        <input type="number" id="qtdAcao" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; margin-bottom:15px; padding:8px;">
     `;
 
     if (tipo === 'guardar' || tipo === 'mover') {
         title.innerText = tipo === 'guardar' ? "Endereçar Volume" : "Mover Volume";
         let opts = dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}</option>`).join('');
-        body.innerHTML += `<label>ENDEREÇO DESTINO:</label><select id="selDestino" style="width:100%;">${opts}</select>`;
+        body.innerHTML += `<label>ENDEREÇO DESTINO:</label><select id="selDestino" style="width:100%; padding:8px;">${opts}</select>`;
     } else {
         title.innerText = "Dar Saída";
     }
@@ -172,25 +166,17 @@ window.abrirAcao = (volId, tipo) => {
                 await addDoc(collection(db, "movimentacoes"), { 
                     tipo: "SAÍDA", produto: vol.descricao, quantidade: qtd, usuario: usernameDB, data: serverTimestamp() 
                 });
-            } 
-            else {
+            } else {
                 const destinoId = document.getElementById("selDestino").value;
                 const endDestino = dbState.enderecos.find(e => e.id === destinoId);
                 const localizacao = `R${endDestino.rua}-M${endDestino.modulo}-N${endDestino.nivel}`;
 
-                // --- LÓGICA DE UNIFICAÇÃO (SOMA SE JÁ EXISTIR) ---
                 const volExistente = dbState.volumes.find(v => 
-                    v.enderecoId === destinoId && 
-                    v.produtoId === vol.produtoId && 
-                    v.codigo === vol.codigo && 
-                    v.descricao === vol.descricao
+                    v.enderecoId === destinoId && v.produtoId === vol.produtoId && v.codigo === vol.codigo
                 );
 
                 if (volExistente) {
-                    await updateDoc(doc(db, "volumes", volExistente.id), { 
-                        quantidade: increment(qtd), 
-                        ultimaMovimentacao: serverTimestamp() 
-                    });
+                    await updateDoc(doc(db, "volumes", volExistente.id), { quantidade: increment(qtd), ultimaMovimentacao: serverTimestamp() });
                 } else {
                     if (qtd === vol.quantidade) {
                         await updateDoc(doc(db, "volumes", volId), { enderecoId: destinoId, ultimaMovimentacao: serverTimestamp() });
@@ -210,8 +196,7 @@ window.abrirAcao = (volId, tipo) => {
 
                 await addDoc(collection(db, "movimentacoes"), { 
                     tipo: tipo.toUpperCase() === 'GUARDAR' ? "ENTRADA" : "TRANSFERÊNCIA", 
-                    produto: vol.descricao, quantidade: qtd, destino: localizacao,
-                    usuario: usernameDB, data: serverTimestamp() 
+                    produto: vol.descricao, quantidade: qtd, destino: localizacao, usuario: usernameDB, data: serverTimestamp() 
                 });
             }
             window.fecharModal(); loadAll();
@@ -219,12 +204,11 @@ window.abrirAcao = (volId, tipo) => {
     };
 };
 
-// --- FUNÇÃO CORRIGIDA PARA O BOTÃO NOVO ENDEREÇO ---
 window.abrirNovoEndereco = () => {
     if(userRole !== 'admin') return;
     const modal = document.getElementById("modalMaster");
-    const title = document.getElementById("modalTitle");
     const body = document.getElementById("modalBody");
+    const title = document.getElementById("modalTitle");
 
     title.innerText = "Cadastrar Novo Endereço";
     body.innerHTML = `
@@ -253,10 +237,12 @@ window.deletarEndereco = async (id) => {
     if(confirm("Excluir endereço? Os itens voltarão para PENDENTES.")){
         try {
             const afetados = dbState.volumes.filter(v => v.enderecoId === id);
-            for(let v of afetados) { await updateDoc(doc(db, \"volumes\", v.id), { enderecoId: "" }); }
+            for(let v of afetados) { 
+                await updateDoc(doc(db, "volumes", v.id), { enderecoId: "" }); 
+            }
             await deleteDoc(doc(db, "enderecos", id));
             loadAll();
-        } catch(e) { alert("Erro ao excluir."); }
+        } catch(e) { console.error(e); alert("Erro ao excluir."); }
     }
 };
 
@@ -265,7 +251,6 @@ window.filtrarEstoque = () => {
     const fForn = document.getElementById("filtroForn")?.value.toLowerCase() || "";
     const fDesc = document.getElementById("filtroDesc")?.value.toLowerCase() || "";
     let c = 0;
-
     document.querySelectorAll(".card-endereco").forEach(card => {
         const busca = card.dataset.busca || "";
         const match = busca.includes(fCod) && busca.includes(fDesc) && (fForn === "" || busca.includes(fForn));
@@ -285,25 +270,3 @@ window.limparFiltros = () => {
 
 window.fecharModal = () => { document.getElementById("modalMaster").style.display = "none"; };
 window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
-    document.querySelectorAll(".card-endereco").forEach(card => {
-        const busca = card.dataset.busca || "";
-        const match = busca.includes(fCod) && busca.includes(fDesc) && (fForn === "" || busca.includes(fForn));
-        card.style.display = match ? "flex" : "none";
-        if(match) c++;
-    });
-    const countDisp = document.getElementById("countDisplay");
-    if(countDisp) countDisp.innerText = c;
-};
-
-window.limparFiltros = () => {
-    document.getElementById("filtroCod").value = "";
-    document.getElementById("filtroForn").value = "";
-    document.getElementById("filtroDesc").value = "";
-    window.filtrarEstoque();
-};
-
-window.fecharModal = () => { document.getElementById("modalMaster").style.display = "none"; };
-window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
-
-// Tornar funções acessíveis globalmente (por causa do type="module")
-window.loadAll = loadAll;
