@@ -19,59 +19,71 @@
       padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
       border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; z-index: 100;
     }
-    .user-badge { background: rgba(255,255,255,0.15); padding: 6px 15px; border-radius: 20px; color: white; font-weight: bold; font-size: 13px; border: 1px solid rgba(255,255,255,0.2); }
-    .container { padding: 20px; max-width: 1200px; margin: auto; }
     .glass-panel { 
-      background: var(--glass); backdrop-filter: blur(20px); border-radius: 15px; 
-      border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      padding: 20px; margin-bottom: 20px;
+      background: var(--glass); backdrop-filter: blur(10px); 
+      margin: 20px; padding: 20px; border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
-    th { background: var(--primary); color: white; padding: 12px; text-align: left; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { background: #f8f9fa; color: var(--primary); padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; }
     td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-    .vol-row { background: #f0f7ff; display: none; }
-    .vol-row.active { display: table-row; }
-    .btn { border: none; border-radius: 6px; padding: 6px 12px; font-weight: bold; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
-    input, select { padding: 10px; border-radius: 6px; border: 1px solid #ccc; outline: none; }
-    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display:none; align-items:center; justify-content:center; z-index:1000; }
-    .modal-content { background: white; padding: 25px; border-radius: 15px; width: 400px; }
-    .badge-qtd { background: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+    tr.child-row { background: #fdfdfd; display: none; }
+    tr.child-row.active { display: table-row; }
+    
+    .btn { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-edit { background: var(--warning); color: #212529; }
+    .btn-add { background: var(--success); color: white; }
+
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: white; padding: 30px; border-radius: 15px; width: 450px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    input, select { width: 100%; padding: 10px; margin: 8px 0 15px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
   </style>
 </head>
 <body>
 
-  <div class="top-nav">
-    <button onclick="location.href='dashboard.html'" class="btn" style="background:rgba(255,255,255,0.2); color:white;">
-      <i class="fas fa-arrow-left"></i> VOLTAR
-    </button>
-    <div style="display: flex; gap: 15px; align-items: center;">
-      <div class="user-badge" id="userDisplay"><i class="fas fa-user"></i> CARREGANDO...</div>
-      <button onclick="window.logout()" class="btn" style="background:var(--danger); color:white;">SAIR</button>
+  <nav class="top-nav">
+    <div style="display:flex; align-items:center; gap:20px;">
+      <h2 style="color:white; margin:0; letter-spacing:1px;">SIMONETTI <span style="font-weight:100; font-size:14px;">PRODUTOS</span></h2>
+      <a href="estoque.html" class="btn" style="background:rgba(255,255,255,0.1); color:white;">VER ESTOQUE</a>
     </div>
-  </div>
-
-  <h2 style="text-align: center; color: white; margin: 20px 0; text-transform: uppercase; letter-spacing: 2px;">Gestão de Produtos e Entradas</h2>
+    <div style="display:flex; gap:15px; align-items:center;">
+      <div id="userDisplay" style="color:white; font-weight:bold;"></div>
+      <button onclick="window.logout()" class="btn-danger btn" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
+    </div>
+  </nav>
 
   <div class="container">
-    <div id="painelCadastro" class="glass-panel" style="display: none; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
-      <div style="flex: 1;"><label style="font-size:11px; font-weight:bold;">CÓDIGO BASE:</label><br><input type="text" id="newCod" style="width:100%;"></div>      
-      <div style="flex: 2;"><label style="font-size:11px; font-weight:bold;">NOME DO PRODUTO:</label><br><input type="text" id="newNome" style="width:100%;"></div>
-      <div style="flex: 1.5;"><label style="font-size:11px; font-weight:bold;">FORNECEDOR:</label><br><select id="selForn" style="width:100%;"></select></div>
-      <button id="btnSaveProd" class="btn" style="background:var(--primary); color:white; height: 42px;">SALVAR PRODUTO</button>
+    <div id="painelCadastro" class="glass-panel" style="display:none; flex-wrap:wrap; gap:15px; align-items:flex-end;">
+      <div style="flex:1; min-width:200px;">
+        <label style="font-size:11px; font-weight:bold;">FORNECEDOR:</label>
+        <select id="selForn"><option value="">Escolha o Fornecedor</option></select>
+      </div>
+      <div style="flex:1; min-width:150px;">
+        <label style="font-size:11px; font-weight:bold;">CÓDIGO PRINCIPAL:</label>
+        <input type="text" id="newCod" placeholder="Ex: 5050">
+      </div>
+      <div style="flex:2; min-width:250px;">
+        <label style="font-size:11px; font-weight:bold;">NOME DO PRODUTO:</label>
+        <input type="text" id="newNome" placeholder="Ex: ROUPEIRO ATALAIA">
+      </div>
+      <button id="btnSaveProd" class="btn btn-add" style="height:40px; margin-bottom:15px;"><i class="fas fa-save"></i> SALVAR PRODUTO</button>
     </div>
 
-    <div class="glass-panel" style="display: flex; gap: 10px; align-items: center;">
-      <input type="text" id="filtroCod" placeholder="SKU..." onkeyup="filtrar()" style="width:120px;">
-      <select id="filtroForn" onchange="filtrar()" style="flex: 1;"></select>
-      <input type="text" id="filtroDesc" placeholder="Buscar produto ou volume..." onkeyup="filtrar()" style="flex: 2;">
-      <button onclick="limparFiltros()" class="btn" style="background:var(--gray); color:white;"><i class="fas fa-eraser"></i></button>
+    <div class="glass-panel" style="display:flex; gap:15px; margin-top:0;">
+      <select id="filtroForn" onchange="window.filtrar()" style="flex:1; margin:0;"><option value="">Todos os Fornecedores</option></select>
+      <input type="text" id="filtroCod" placeholder="Buscar por Código..." onkeyup="window.filtrar()" style="flex:1; margin:0;">
+      <input type="text" id="filtroDesc" placeholder="Buscar por Descrição..." onkeyup="window.filtrar()" style="flex:2; margin:0;">
+      <button onclick="window.limparFiltros()" class="btn" style="background:var(--gray); color:white;"><i class="fas fa-eraser"></i> LIMPAR</button>
     </div>
 
     <div class="glass-panel" style="padding: 0; overflow: hidden;">
       <table>
         <thead>
           <tr>
-            <th style="width: 50px; text-align: center;">EXP.</th>
+            <th style="width: 40px;"></th>
+            <th style="width: 120px;">CÓDIGO</th>
             <th>FORNECEDOR</th>
             <th>PRODUTO</th>
             <th style="text-align: center;">TOTAL GERAL</th>
@@ -85,16 +97,11 @@
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top: 0; color: var(--primary);">Volume</h3>
-      <div id="modalBody">
-        <label style="font-size:11px; font-weight:bold;">CÓDIGO DO VOLUME (SKU):</label>
-        <input type="text" id="volCod" style="width:100%; margin-bottom:15px;" placeholder="Ex: 12345">
-        <label style="font-size:11px; font-weight:bold;">DESCRIÇÃO DO VOLUME:</label>
-        <input type="text" id="volDesc" style="width:100%;" placeholder="Ex: PORTA LATERAL">
-      </div>
+      <h3 id="modalTitle" style="margin-top: 0; color: var(--primary);">Ação</h3>
+      <div id="modalBody"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-        <button onclick="fecharModal()" class="btn" style="background:#ccc;">CANCELAR</button>
-        <button id="btnConfirmarVol" class="btn" style="background:var(--success); color:white;">SALVAR</button>
+        <button onclick="window.fecharModal()" class="btn" style="background:#eee;">CANCELAR</button>
+        <button id="btnModalConfirm" class="btn btn-primary">CONFIRMAR</button>
       </div>
     </div>
   </div>
