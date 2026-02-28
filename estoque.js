@@ -8,7 +8,7 @@ let dbState = { fornecedores: {}, produtos: {}, enderecos: [], volumes: [] };
 let usernameDB = "Usuário";
 let userRole = "leitor";
 
-// --- CONTROLE DE ACESSO ---
+// --- CONTROLE DE ACESSO E PERMISSÕES ---
 onAuthStateChanged(auth, async user => {
     if (user) {
         const userRef = doc(db, "users", user.uid);
@@ -16,287 +16,248 @@ onAuthStateChanged(auth, async user => {
         if (userSnap.exists()) {
             const data = userSnap.data();
             usernameDB = data.nomeCompleto || "Usuário";
-            userRole = (data.role || "leitor").toLowerCase();
+            userRole = data.role || "leitor";
             
+            // Exibe botão de novo endereço apenas para Admins
             const btnEnd = document.getElementById("btnNovoEnd");
             if(btnEnd) btnEnd.style.display = (userRole === 'admin') ? 'block' : 'none';
         }
         const display = document.getElementById("userDisplay");
         if(display) display.innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB} (${userRole.toUpperCase()})`;
         loadAll();
-    } else { 
-        window.location.href = "index.html"; 
-    }
+    } else { window.location.href = "index.html"; }
 });
 
-// --- CARREGAMENTO DE DADOS ---
 async function loadAll() {
     try {
-        const fSnap = await getDocs(collection(db, "fornecedores"));
+        const [fSnap, pSnap, eSnap, vSnap] = await Promise.all([
+            getDocs(collection(db, "fornecedores")),
+            getDocs(collection(db, "produtos")),
+            getDocs(query(collection(db, "enderecos"), orderBy("rua"), orderBy("modulo"))),
+            getDocs(collection(db, "volumes"))
+        ]);
+
         dbState.fornecedores = {};
-        const filtroForn = document.getElementById("filtroForn");
-        if(filtroForn) filtroForn.innerHTML = '<option value="">Todos os Fornecedores</option>';
-
-        fSnap.forEach(d => {
-            const nomeForn = d.data().nome;
-            dbState.fornecedores[d.id] = nomeForn;
-            if(filtroForn){
-                let opt = document.createElement("option");
-                opt.value = nomeForn.toLowerCase(); // Valor em minúsculo para o filtro
-                opt.innerText = nomeForn;
-                filtroForn.appendChild(opt);
-            }
-        });
-
-        const pSnap = await getDocs(collection(db, "produtos"));
+        fSnap.forEach(d => dbState.fornecedores[d.id] = { nome: d.data().nome });
+        
         dbState.produtos = {};
-        pSnap.forEach(d => {
-            const p = d.data();
-            dbState.produtos[d.id] = { 
-                nome: p.nome, 
-                codigo: p.codigo || "S/C",
-                forn: dbState.fornecedores[p.fornecedorId] || "---" 
-            };
+        pSnap.forEach(d => dbState.produtos[d.id] = { 
+            nome: d.data().nome, 
+            codigo: d.data().codigo || "S/C", 
+            fornecedorId: d.data().fornecedorId 
         });
 
-        await syncUI();
-    } catch (e) { console.error("Erro loadAll:", e); }
-}
+        dbState.enderecos = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        dbState.volumes = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-async function syncUI() {
-    const eSnap = await getDocs(query(collection(db, "enderecos"), orderBy("rua"), orderBy("modulo")));
-    dbState.enderecos = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    
-    const vSnap = await getDocs(collection(db, "volumes"));
-    dbState.volumes = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    renderPendentes();
-    renderEnderecos();
-    if(window.filtrarEstoque) window.filtrarEstoque();
-}
-
-// --- LÓGICA DE MOVIMENTAÇÃO (AQUI ESTÁ A JUNÇÃO 25+25) ---
-window.confirmarMovimentacao = async () => {
-    const volId = document.getElementById("modalVolId")?.value;
-    const destId = document.getElementById("selDestino")?.value;
-    const qtdMover = parseInt(document.getElementById("qtdMover")?.value);
-
-    if (!volId || !destId || isNaN(qtdMover) || qtdMover <= 0) {
-        return alert("Selecione o destino e a quantidade!");
-    }
-
-    const volOrigem = dbState.volumes.find(v => v.id === volId);
-    if (!volOrigem) return alert("Erro ao localizar volume de origem.");
-
-    try {
-        // PROCURA SE JÁ EXISTE O MESMO PRODUTO NO MESMO ENDEREÇO DESTINO
-        // Comparamos: enderecoId, produtoId e descricao (volume)
-        const existenteNoDestino = dbState.volumes.find(v => 
-            v.enderecoId === destId && 
-            v.produtoId === volOrigem.produtoId && 
-            String(v.descricao).trim().toLowerCase() === String(volOrigem.descricao).trim().toLowerCase() &&
-            v.quantidade > 0
-        );
-
-        if (existenteNoDestino) {
-            // JUNÇÃO: Apenas aumenta a quantidade no destino
-            await updateDoc(doc(db, "volumes", existenteNoDestino.id), {
-                quantidade: increment(qtdMover),
-                ultimaMov: serverTimestamp()
-            });
-        } else {
-            // CRIAÇÃO: Adiciona um novo registro naquele endereço
-            await addDoc(collection(db, "volumes"), {
-                produtoId: volOrigem.produtoId,
-                descricao: volOrigem.descricao,
-                quantidade: qtdMover,
-                enderecoId: destId,
-                dataMov: serverTimestamp()
-            });
+        const selForn = document.getElementById("filtroForn");
+        if(selForn) {
+            selForn.innerHTML = '<option value="">Todos os Fornecedores</option>';
+            const nomes = [...new Set(Object.values(dbState.fornecedores).map(f => f.nome))].sort();
+            nomes.forEach(n => selForn.innerHTML += `<option value="${n}">${n}</option>`);
         }
+        syncUI();
+    } catch (e) { console.error("Erro ao carregar dados:", e); }
+}
 
-        // SUBTRAÇÃO: Remove da origem
-        const novaQtdOrigem = volOrigem.quantidade - qtdMover;
-        await updateDoc(doc(db, "volumes", volId), {
-            quantidade: novaQtdOrigem,
-            // Se zerar, desvinculamos o endereço (mas mantemos o registro para histórico/pendência se necessário)
-            enderecoId: novaQtdOrigem <= 0 ? "" : volOrigem.enderecoId
-        });
-
-        window.fecharModal();
-        // Recarrega tudo para atualizar a tela
-        await loadAll();
-    } catch (e) {
-        console.error("Erro na junção:", e);
-        alert("Erro técnico ao processar movimentação. Verifique o console.");
-    }
-};
-
-// --- RENDERIZAÇÃO COM SUPORTE AO FILTRO DE FORNECEDOR ---
-function renderEnderecos() {
+function syncUI() {
     const grid = document.getElementById("gridEnderecos");
-    if(!grid) return;
-    grid.innerHTML = "";
+    const pendentes = document.getElementById("listaPendentes");
+    if(!grid || !pendentes) return;
 
-    dbState.enderecos.forEach(end => {
-        const vols = dbState.volumes.filter(v => v.enderecoId === end.id && v.quantidade > 0);
-        const card = document.createElement('div');
+    grid.innerHTML = "";
+    pendentes.innerHTML = "";
+
+    // 1. LISTA DE PENDENTES (LADO ESQUERDO)
+    const falta = dbState.volumes.filter(v => (!v.enderecoId || v.enderecoId === "") && v.quantidade > 0);
+    document.getElementById("countPendentes").innerText = falta.length;
+
+    falta.forEach(v => {
+        const prod = dbState.produtos[v.produtoId] || { nome: "Produto não encontrado", codigo: "S/C" };
+        const forn = dbState.fornecedores[prod.fornecedorId] || { nome: "Sem Fornecedor" };
+        
+        const div = document.createElement("div");
+        div.className = "item-pendente";
+        div.innerHTML = `
+            <small style="color:var(--primary); font-weight:bold; text-transform:uppercase;">${forn.nome}</small><br>
+            <span style="font-size:11px;"><b>Prod: ${prod.codigo}</b> - ${prod.nome}</span><br>
+            <span style="font-size:11px;"><b>Vol: ${v.codigo || 'S/C'}</b> - ${v.descricao}</span><br>
+            <small>Qtd: <b>${v.quantidade}</b></small>
+            ${userRole !== 'leitor' ? `<button onclick="window.abrirAcao('${v.id}', 'guardar')" class="btn" style="background:var(--success); color:white; width:100%; margin-top:5px; padding:4px; font-size:10px;">GUARDAR</button>` : ''}
+        `;
+        pendentes.appendChild(div);
+    });
+
+    // 2. GRID DE ENDEREÇOS (CENTRO)
+    dbState.enderecos.forEach(e => {
+        const vols = dbState.volumes.filter(v => v.enderecoId === e.id && v.quantidade > 0);
+        const card = document.createElement("div");
         card.className = "card-endereco";
         
-        // Texto que será usado na busca (incluindo fornecedor agora!)
-        let buscaTxt = `rua ${end.rua} mod ${end.modulo} ${end.nivel || ""} `;
-        
-        let htmlVols = vols.map(v => {
-            const p = dbState.produtos[v.produtoId] || {nome:"---", forn:"---"};
-            // Adicionamos o nome do fornecedor no texto de busca do card
-            buscaTxt += `${p.nome} ${v.forn} ${v.descricao} `.toLowerCase();
-            
-            return `
-            <div class="vol-item">
-                <div style="flex:1">
-                    <small style="color:var(--primary); font-weight:bold;">${p.forn}</small><br>
-                    <strong>${p.nome}</strong><br>
-                    <small>${v.descricao} | Qtd: <b>${v.quantidade}</b></small>
-                </div>
-                ${userRole !== 'leitor' ? `
-                <div class="actions">
-                    <button onclick="window.abrirModalMover('${v.id}')" title="Mover"><i class="fas fa-exchange-alt"></i></button>
-                    <button onclick="window.darSaida('${v.id}', '${v.descricao}')" style="color:var(--danger)" title="Saída"><i class="fas fa-sign-out-alt"></i></button>
-                </div>` : ''}
-            </div>`;
-        }).join('');
+        let totalUnidadesNoEndereco = 0;
+        let htmlItens = "";
+        let buscaTexto = `${e.rua} ${e.modulo} ${e.nivel} `.toLowerCase();
 
-        card.dataset.busca = buscaTxt;
+        vols.forEach(v => {
+            const prod = dbState.produtos[v.produtoId] || { nome: "???", codigo: "S/C" };
+            const forn = dbState.fornecedores[prod.fornecedorId] || { nome: "S/F" };
+            totalUnidadesNoEndereco += v.quantidade;
+            buscaTexto += `${prod.nome} ${prod.codigo} ${forn.nome} ${v.descricao} ${v.codigo || ''} `.toLowerCase();
+
+            htmlItens += `
+                <div class="item-row" style="border-bottom: 1px solid #eee; padding: 6px 0;">
+                    <div class="item-info">
+                        <div style="font-size: 9px; color: var(--primary); font-weight: bold; text-transform: uppercase;">${forn.nome}</div>
+                        <div style="font-size: 11px; font-weight: bold;">P: ${prod.codigo} - ${prod.nome}</div>
+                        <div style="font-size: 10px; color: #555;">V: ${v.codigo || 'S/C'} - ${v.descricao}</div>
+                        <div style="font-size: 11px; color: var(--success); font-weight: bold;">Qtd: ${v.quantidade}</div>
+                    </div>
+                    ${userRole !== 'leitor' ? `
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <button onclick="window.abrirAcao('${v.id}', 'mover')" class="btn-mini" style="background:var(--info)" title="Mover"><i class="fas fa-exchange-alt"></i></button>
+                            <button onclick="window.abrirAcao('${v.id}', 'saida')" class="btn-mini" style="background:var(--danger)" title="Saída"><i class="fas fa-sign-out-alt"></i></button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+
+        card.dataset.busca = buscaTexto;
         card.innerHTML = `
-            <div class="card-header">
-                <span>RUA ${end.rua} - MOD ${end.modulo}</span>
-                ${userRole === 'admin' ? `<i class="fas fa-trash" onclick="window.deletarLocal('${end.id}')" style="cursor:pointer; opacity:0.5"></i>` : ""}
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}
+                ${userRole === 'admin' ? `<i class="fas fa-trash" onclick="window.deletarEndereco('${e.id}')" style="cursor:pointer; font-size:12px;"></i>` : ''}
             </div>
-            ${htmlVols || '<div style="padding:10px; color:#999; font-size:12px; text-align:center;">Vazio</div>'}
+            <div class="card-body" style="padding:10px; max-height:200px; overflow-y:auto;">
+                ${htmlItens || '<small style="color:#ccc">Vazio</small>'}
+            </div>
+            <div class="card-footer" style="background:#f8f9fa; font-weight:bold; font-size:11px; text-align:right; padding:4px 10px; border-top:1px solid #ddd;">
+                Total no Local: ${totalUnidadesNoEndereco}
+            </div>
         `;
         grid.appendChild(card);
     });
+    window.filtrarEstoque();
 }
 
-// --- FILTROS ---
-window.filtrarEstoque = () => {
-    const fCod = document.getElementById("filtroCod")?.value.toLowerCase() || "";
-    const fForn = document.getElementById("filtroForn")?.value.toLowerCase() || "";
-    const fDesc = document.getElementById("filtroDesc")?.value.toLowerCase() || "";
-    let c = 0;
+window.abrirAcao = (volId, tipo) => {
+    if(userRole === 'leitor') return;
+    const vol = dbState.volumes.find(v => v.id === volId);
+    if(!vol) return;
 
-    document.querySelectorAll(".card-endereco").forEach(card => {
-        const busca = card.dataset.busca || "";
-        // Verifica se o texto de busca do card contém o código AND descrição AND fornecedor
-        const match = busca.includes(fCod) && busca.includes(fDesc) && (fForn === "" || busca.includes(fForn));
-        
-        card.style.display = match ? "flex" : "none";
-        if(match) c++;
-    });
-
-    const countDisp = document.getElementById("countDisplay");
-    if(countDisp) countDisp.innerText = c;
-};
-
-// --- RESTANTE DAS FUNÇÕES (MODAIS E AUXILIARES) ---
-window.abrirModalMover = (id) => {
-    const v = dbState.volumes.find(vol => vol.id === id);
-    if(!v) return;
-    const p = dbState.produtos[v.produtoId] || {nome: "Produto"};
-
-    document.getElementById("modalTitle").innerText = "Movimentar Estoque";
-    document.getElementById("modalBody").innerHTML = `
-        <input type="hidden" id="modalVolId" value="${v.id}">
-        <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-bottom:15px;">
-            <small>${p.forn}</small><br>
-            <strong>${p.nome}</strong><br>
-            <small>${v.descricao} | Saldo: ${v.quantidade}</small>
+    const modal = document.getElementById("modalMaster");
+    const body = document.getElementById("modalBody");
+    const title = document.getElementById("modalTitle");
+    
+    body.innerHTML = `
+        <div style="font-size:12px; background:#f0f7ff; padding:10px; border-radius:5px; margin-bottom:15px;">
+            Item: <b>${vol.descricao}</b><br>Saldo Atual: <b>${vol.quantidade}</b>
         </div>
-        <label>Para onde deseja mover?</label>
-        <select id="selDestino" class="form-control" style="width:100%; margin-bottom:10px; padding:10px;">
-            <option value="">Selecione o Endereço...</option>
-            ${dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo} ${e.nivel ? '('+e.nivel+')' : ''}</option>`).join('')}
-        </select>
-        <label>Quantidade:</label>
-        <input type="number" id="qtdMover" value="${v.quantidade}" max="${v.quantidade}" min="1" class="form-control" style="width:100%; padding:10px; margin-bottom:15px;">
+        <label>QUANTIDADE:</label>
+        <input type="number" id="qtdAcao" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; margin-bottom:15px; padding:8px;">
+    `;
+
+    if (tipo === 'guardar' || tipo === 'mover') {
+        title.innerText = tipo === 'guardar' ? "Endereçar Volume" : "Mover Volume";
+        let opts = dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}</option>`).join('');
+        body.innerHTML += `<label>ENDEREÇO DESTINO:</label><select id="selDestino" style="width:100%; padding:8px;">${opts}</select>`;
+    } else {
+        title.innerText = "Dar Saída";
+    }
+
+    modal.style.display = "flex";
+
+    document.getElementById("btnConfirmar").onclick = async () => {
+        const qtd = parseInt(document.getElementById("qtdAcao").value);
+        if(isNaN(qtd) || qtd <= 0 || qtd > vol.quantidade) return alert("Quantidade inválida!");
+
+        try {
+            if (tipo === 'saida') {
+                await updateDoc(doc(db, "volumes", volId), { quantidade: increment(-qtd), ultimaMovimentacao: serverTimestamp() });
+                await addDoc(collection(db, "movimentacoes"), { 
+                    tipo: "SAÍDA", produto: vol.descricao, quantidade: qtd, usuario: usernameDB, data: serverTimestamp() 
+                });
+            } else {
+                const destinoId = document.getElementById("selDestino").value;
+                const endDestino = dbState.enderecos.find(e => e.id === destinoId);
+                const localizacao = `R${endDestino.rua}-M${endDestino.modulo}-N${endDestino.nivel}`;
+
+                // Lógica de aglutinação (Soma se o volume já existir no destino)
+                const volExistente = dbState.volumes.find(v => 
+                    v.enderecoId === destinoId && v.produtoId === vol.produtoId && v.codigo === vol.codigo
+                );
+
+                if (volExistente) {
+                    await updateDoc(doc(db, "volumes", volExistente.id), { quantidade: increment(qtd), ultimaMovimentacao: serverTimestamp() });
+                } else {
+                    if (qtd === vol.quantidade) {
+                        await updateDoc(doc(db, "volumes", volId), { enderecoId: destinoId, ultimaMovimentacao: serverTimestamp() });
+                    } else {
+                        await addDoc(collection(db, "volumes"), {
+                            produtoId: vol.produtoId, descricao: vol.descricao, codigo: vol.codigo || "",
+                            quantidade: qtd, enderecoId: destinoId, ultimaMovimentacao: serverTimestamp()
+                        });
+                    }
+                }
+
+                if (qtd < vol.quantidade) {
+                    await updateDoc(doc(db, "volumes", volId), { quantidade: increment(-qtd) });
+                } else if (volExistente && qtd === vol.quantidade) {
+                    await deleteDoc(doc(db, "volumes", volId));
+                }
+
+                await addDoc(collection(db, "movimentacoes"), { 
+                    tipo: tipo.toUpperCase() === 'GUARDAR' ? "ENTRADA" : "TRANSFERÊNCIA", 
+                    produto: vol.descricao, quantidade: qtd, destino: localizacao, usuario: usernameDB, data: serverTimestamp() 
+                });
+            }
+            window.fecharModal(); loadAll();
+        } catch (err) { console.error(err); alert("Erro ao processar!"); }
+    };
+};
+
+window.abrirNovoEndereco = () => {
+    if(userRole !== 'admin') return;
+    const modal = document.getElementById("modalMaster");
+    const body = document.getElementById("modalBody");
+    const title = document.getElementById("modalTitle");
+
+    title.innerText = "Cadastrar Novo Endereço";
+    body.innerHTML = `
+        <label>RUA:</label><input type="text" id="addRua" style="width:100%; margin-bottom:10px; padding:8px;">
+        <label>MÓDULO:</label><input type="number" id="addMod" style="width:100%; margin-bottom:10px; padding:8px;">
+        <label>NÍVEL:</label><input type="number" id="addNiv" value="1" style="width:100%; padding:8px;">
+    `;
+    modal.style.display = "flex";
+
+    document.getElementById("btnConfirmar").onclick = async () => {
+        const rua = document.getElementById("addRua").value.trim().toUpperCase();
+        const mod = document.getElementById("addMod").value.trim();
+        const niv = document.getElementById("addNiv").value.trim();
+        if(!rua || !mod) return alert("Preencha Rua e Módulo!");
         
-        <button onclick="window.confirmarMovimentacao()" class="btn" style="width:100%; background:var(--success); color:white; font-weight:bold; height:45px;">
-            CONFIRMAR MOVIMENTAÇÃO
-        </button>
-    `;
-    document.getElementById("modalMaster").style.display = "flex";
-};
+        const existe = dbState.enderecos.find(e => e.rua === rua && e.modulo === mod && e.nivel === niv);
+        if(existe) return alert("Endereço já cadastrado!");
 
-window.abrirModalNovoEnd = () => {
-    document.getElementById("modalTitle").innerText = "Novo Endereço";
-    document.getElementById("modalBody").innerHTML = `
-        <input type="text" id="addRua" placeholder="Rua (Ex: A)" class="form-control" style="width:100%; margin-bottom:10px; padding:10px;">
-        <input type="text" id="addModulo" placeholder="Módulo (Ex: 102)" class="form-control" style="width:100%; margin-bottom:10px; padding:10px;">
-        <input type="text" id="addNivel" placeholder="Nível/Altura (Opcional)" class="form-control" style="width:100%; margin-bottom:15px; padding:10px;">
-        <button onclick="window.salvarNovoEndereco()" class="btn" style="width:100%; background:var(--primary); color:white; font-weight:bold; height:45px;">
-            CADASTRAR ENDEREÇO
-        </button>
-    `;
-    document.getElementById("modalMaster").style.display = "flex";
-};
-
-window.salvarNovoEndereco = async () => {
-    const rua = document.getElementById("addRua")?.value.trim().toUpperCase();
-    const mod = document.getElementById("addModulo")?.value.trim();
-    const niv = document.getElementById("addNivel")?.value.trim() || "";
-    if (!rua || !mod) return alert("Rua e Módulo são obrigatórios!");
-    const duplicado = dbState.enderecos.find(e => e.rua === rua && e.modulo === mod && (e.nivel || "") === niv);
-    if (duplicado) return alert("Este endereço já existe!");
-    try {
         await addDoc(collection(db, "enderecos"), { rua, modulo: mod, nivel: niv });
-        window.fecharModal();
-        loadAll();
-    } catch (e) { alert("Erro ao salvar."); }
+        window.fecharModal(); loadAll();
+    };
 };
 
-function renderPendentes() {
-    const area = document.getElementById("pendentesArea");
-    if(!area) return;
-    area.innerHTML = "";
-    dbState.volumes.filter(v => v.quantidade > 0 && !v.enderecoId).forEach(v => {
-        const p = dbState.produtos[v.produtoId] || {nome:"---"};
-        const div = document.createElement("div");
-        div.className = "vol-item-pendente";
-        div.innerHTML = `
-            <div style="flex:1">
-                <strong>${p.nome}</strong><br>
-                <small>${v.descricao} (Qtd: ${v.quantidade})</small>
-            </div>
-            ${userRole !== 'leitor' ? `<button onclick="window.abrirModalMover('${v.id}')" class="btn-pendente">MOVER</button>` : ''}
-        `;
-        area.appendChild(div);
-    });
-}
-
-window.limparFiltros = () => {
-    document.getElementById("filtroCod").value = "";
-    document.getElementById("filtroForn").value = "";
-    document.getElementById("filtroDesc").value = "";
-    window.filtrarEstoque();
-};
-
-window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
-window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
-
-window.darSaida = async (id, desc) => {
-    const q = prompt(`Saída: ${desc}\nQuantidade:`);
-    if(q && parseInt(q) > 0) {
-        await updateDoc(doc(db, "volumes", id), { quantidade: increment(-parseInt(q)) });
-        loadAll();
+window.deletarEndereco = async (id) => {
+    if(userRole !== 'admin') return;
+    if(confirm("Excluir endereço? Os itens voltarão para PENDENTES.")){
+        try {
+            const afetados = dbState.volumes.filter(v => v.enderecoId === id);
+            for(let v of afetados) { 
+                await updateDoc(doc(db, "volumes", v.id), { enderecoId: "" }); 
+            }
+            await deleteDoc(doc(db, "enderecos", id));
+            loadAll();
+        } catch(e) { console.error(e); alert("Erro ao excluir."); }
     }
 };
 
-window.deletarLocal = async (id) => {
-    if(confirm("Excluir endereço permanentemente?")) {
-        await deleteDoc(doc(db, "enderecos", id));
-        loadAll();
-    }
-};
 window.filtrarEstoque = () => {
     const fCod = document.getElementById("filtroCod")?.value.toLowerCase() || "";
     const fForn = document.getElementById("filtroForn")?.value.toLowerCase() || "";
@@ -311,9 +272,13 @@ window.filtrarEstoque = () => {
     const countDisp = document.getElementById("countDisplay");
     if(countDisp) countDisp.innerText = c;
 };
+
 window.limparFiltros = () => {
     document.getElementById("filtroCod").value = "";
     document.getElementById("filtroForn").value = "";
     document.getElementById("filtroDesc").value = "";
     window.filtrarEstoque();
 };
+
+window.fecharModal = () => { document.getElementById("modalMaster").style.display = "none"; };
+window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
