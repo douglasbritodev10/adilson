@@ -15,7 +15,6 @@
       height: 100vh; overflow: hidden; color: #333;
     }
 
-    /* Top Nav: Voltar Esquerda / Sair Direita */
     .top-nav { 
       background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(15px);
       padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
@@ -23,9 +22,9 @@
     }
     .user-badge { background: rgba(255,255,255,0.15); padding: 6px 15px; border-radius: 20px; color: white; font-weight: bold; font-size: 13px; border: 1px solid rgba(255,255,255,0.2); }
 
+    /* Ajuste do layout para comportar o título */
     .main-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; padding: 20px; height: calc(100vh - 120px); box-sizing: border-box; }
 
-    /* Painéis Estilo Vidro */
     .glass-panel { 
       background: var(--glass); backdrop-filter: blur(20px); border-radius: 15px; 
       border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.3);
@@ -33,7 +32,6 @@
     }
     .panel-header { background: rgba(0, 74, 153, 0.9); color: white; padding: 12px; font-weight: bold; text-align: center; font-size: 12px; text-transform: uppercase; }
 
-    /* Cards Retráteis */
     .card-endereco { background: white; margin: 8px 12px; border-radius: 10px; border: 1px solid #ddd; overflow: hidden; }
     .addr-summary { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
     .addr-summary:hover { background: #f0f7ff; }
@@ -43,7 +41,6 @@
     .item-linha { padding: 10px; border-bottom: 1px solid #eee; margin-bottom: 5px; border-left: 4px solid var(--primary); background: white; border-radius: 4px; }
     .forn-tag { color: var(--danger); font-size: 10px; font-weight: 900; text-transform: uppercase; }
 
-    /* Botões e Inputs */
     .btn { border: none; border-radius: 6px; padding: 8px 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
     input, select { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
 
@@ -63,9 +60,7 @@
     </div>
   </div>
 
-  <h2 style="text-align: center; color: white; margin-top: 10px; text-transform: uppercase; letter-spacing: 2px;">
-      Controle de Estoque
-  </h2>
+  <h2 style="text-align: center; color: white; margin: 15px 0; text-transform: uppercase; letter-spacing: 2px;">Controle de Estoque</h2>
 
   <div class="main-layout">
     <div class="glass-panel">
@@ -74,7 +69,7 @@
     </div>
 
     <div style="overflow-y: auto;">
-      <div class="glass-panel" style="margin-bottom: 15px; padding: 15px; flex-direction: row; gap: 10px; align-items: flex-end;">
+      <div id="painelCadastro" class="glass-panel" style="margin-bottom: 15px; padding: 15px; flex-direction: row; gap: 10px; align-items: flex-end; display: none;">
           <div><label style="font-size:10px; font-weight:bold;">RUA</label><br><input type="text" id="addRua" style="width:50px;"></div>
           <div><label style="font-size:10px; font-weight:bold;">MOD</label><br><input type="text" id="addMod" style="width:70px;"></div>
           <div><label style="font-size:10px; font-weight:bold;">NÍV</label><br><input type="text" id="addNiv" style="width:50px;"></div>
@@ -86,8 +81,8 @@
           <select id="filtroForn" onchange="window.filtrarEstoque()" style="flex:1;"></select>
           <input type="text" id="filtroDesc" placeholder="Produto..." onkeyup="window.filtrarEstoque()" style="flex:2;">
           
-          <button onclick="window.limparFiltros()" class="btn" style="background: #6c757d; color: white;" title="Limpar Filtros">
-              <i class="fas fa-eraser"></i>
+          <button onclick="window.limparFiltros()" class="btn" style="background:#6c757d; color:white;" title="Limpar Filtros">
+            <i class="fas fa-eraser"></i>
           </button>
 
           <div id="countDisplay" style="background:var(--primary); color:white; padding:8px 15px; border-radius:5px; font-weight:bold;">0</div>
@@ -103,7 +98,7 @@
       <div id="modalBody"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
         <button onclick="window.fecharModal()" class="btn" style="background:#ccc;">CANCELAR</button>
-        <button id="btnConfirmar" class="btn" style="background: var(--success); color: white;">CONFIRMAR</button>
+        <button id="btnConfirmar" class="btn" style="background:var(--success); color:white;">CONFIRMAR</button>
       </div>
     </div>
   </div>
