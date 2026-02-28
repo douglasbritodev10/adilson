@@ -54,8 +54,8 @@
 
   <div class="container">
     <div id="painelCadastro" class="glass-panel" style="display: none; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+      <div style="flex: 1;"><label style="font-size:11px; font-weight:bold;">CÓDIGO BASE:</label><br><input type="text" id="newCod" style="width:100%;"></div>      
       <div style="flex: 2;"><label style="font-size:11px; font-weight:bold;">NOME DO PRODUTO:</label><br><input type="text" id="newNome" style="width:100%;"></div>
-      <div style="flex: 1;"><label style="font-size:11px; font-weight:bold;">CÓDIGO BASE:</label><br><input type="text" id="newCod" style="width:100%;"></div>
       <div style="flex: 1.5;"><label style="font-size:11px; font-weight:bold;">FORNECEDOR:</label><br><select id="selForn" style="width:100%;"></select></div>
       <button id="btnSaveProd" class="btn" style="background:var(--primary); color:white; height: 42px;">SALVAR PRODUTO</button>
     </div>
@@ -87,10 +87,10 @@
     <div class="modal-content">
       <h3 id="modalTitle" style="margin-top: 0; color: var(--primary);">Volume</h3>
       <div id="modalBody">
-        <label style="font-size:11px; font-weight:bold;">CÓDIGO DO VOLUME (SKU/EAN):</label>
-        <input type="text" id="volCod" style="width:100%; margin-bottom:15px;" placeholder="Ex: VOL-01">
+        <label style="font-size:11px; font-weight:bold;">CÓDIGO DO VOLUME (SKU):</label>
+        <input type="text" id="volCod" style="width:100%; margin-bottom:15px;" placeholder="Ex: 12345">
         <label style="font-size:11px; font-weight:bold;">DESCRIÇÃO DO VOLUME:</label>
-        <input type="text" id="volDesc" style="width:100%;" placeholder="Ex: CAIXA 1/2">
+        <input type="text" id="volDesc" style="width:100%;" placeholder="Ex: PORTA LATERAL">
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
         <button onclick="fecharModal()" class="btn" style="background:#ccc;">CANCELAR</button>
