@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 let dbState = { fornecedores: {}, produtos: {}, enderecos: [], volumes: [] };
-let usernameDB = "Usuário";
+let nomeCompletoDB = "Usuário";
 
 // --- AUTENTICAÇÃO E CARREGAMENTO ---
 onAuthStateChanged(auth, async user => {
