@@ -8,32 +8,37 @@
     :root { --primary: #004a99; --danger: #ff4d4d; --success: #00c853; --warning: #ffab00; }
     body { background: #001f3f; margin: 0; font-family: 'Segoe UI', sans-serif; color: #333; height: 100vh; overflow: hidden; }
     
-    .top-nav { background: rgba(0,0,0,0.3); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    /* Topo */
+    .top-nav { background: rgba(0,0,0,0.3); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); height: 50px; }
     .nav-left, .nav-right { display: flex; align-items: center; gap: 15px; color: white; }
-    .btn-back { color: white; font-size: 24px; text-decoration: none; padding: 5px 10px; }
+    .btn-back { color: white; font-size: 20px; text-decoration: none; background: rgba(255,255,255,0.1); width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
 
-    .main-container { display: flex; height: calc(100vh - 60px); padding: 15px; gap: 15px; box-sizing: border-box; }
+    /* Layout */
+    .main-container { display: flex; height: calc(100vh - 50px); padding: 15px; gap: 15px; box-sizing: border-box; }
     .sidebar { width: 300px; display: flex; flex-direction: column; gap: 10px; }
-    .content { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+    .content { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
 
-    .glass { background: rgba(255,255,255,0.9); border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-    .grid-enderecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; overflow-y: auto; }
+    .glass { background: rgba(255,255,255,0.95); border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    .grid-enderecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; overflow-y: auto; padding-bottom: 20px; }
     
     /* Card de Endereço */
-    .card-endereco { background: white; border-radius: 8px; border: 1px solid #ddd; display: flex; flex-direction: column; }
-    .card-header { background: #f0f4f8; padding: 10px; font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; }
-    .total-end { background: var(--warning); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    .card-endereco { background: white; border-radius: 8px; border: 1px solid #ccc; display: flex; flex-direction: column; max-height: 400px; }
+    .card-header { background: #eef2f7; padding: 10px; font-weight: bold; display: flex; justify-content: space-between; border-radius: 8px 8px 0 0; border-bottom: 1px solid #ccc; color: var(--primary); }
+    .total-end { background: var(--warning); padding: 2px 8px; border-radius: 4px; font-size: 11px; color: black; }
 
-    /* Item Detalhado */
-    .vol-item { border: 1px solid #eee; margin: 8px; padding: 8px; border-left: 4px solid var(--primary); border-radius: 4px; }
-    .forn-name { font-size: 10px; color: var(--primary); font-weight: bold; text-transform: uppercase; }
-    .prod-info { font-size: 13px; font-weight: bold; margin: 4px 0; }
-    .vol-info { font-size: 11px; color: #666; background: #f9f9f9; padding: 4px; }
+    /* Item Interno (Volume) */
+    .vol-item { border: 1px solid #eee; margin: 8px; padding: 10px; border-left: 5px solid var(--primary); border-radius: 4px; background: #fff; }
+    .forn-name { font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; margin-bottom: 3px; }
+    .prod-info { font-size: 13px; font-weight: 800; margin-bottom: 5px; }
+    .vol-info { font-size: 11px; color: #444; background: #f4f4f4; padding: 6px; border-radius: 4px; line-height: 1.4; }
     
-    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; justify-content:center; align-items:center; z-index:100; }
-    .modal-content { background:white; padding:20px; border-radius:10px; width:350px; }
-    input, select { width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
-    .btn-confirm { background: var(--primary); color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 4px; font-weight: bold; }
+    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:1000; }
+    .modal-content { background:white; padding:25px; border-radius:12px; width:350px; }
+    input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    .btn-confirm { background: var(--primary); color: white; border: none; padding: 12px; width: 100%; cursor: pointer; border-radius: 6px; font-weight: bold; }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
   </style>
 </head>
 <body>
@@ -41,31 +46,34 @@
   <div class="top-nav">
     <div class="nav-left">
       <a href="dashboard.html" class="btn-back"><i class="fas fa-arrow-left"></i></a>
-      <span style="font-weight: bold;">ESTOQUE DETALHADO</span>
+      <span style="font-weight: bold; letter-spacing: 1px;">SISTEMA DE ESTOQUE</span>
     </div>
     <div class="nav-right">
-      <span id="userDisplay"><i class="fas fa-user"></i> Usuário</span>
-      <button onclick="window.logout()" style="background:var(--danger); border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">SAIR</button>
+      <span id="userDisplay"><i class="fas fa-user-circle"></i> Carregando...</span>
+      <button onclick="window.logout()" style="background:var(--danger); border:none; color:white; padding:6px 12px; border-radius:4px; cursor:pointer; font-size: 11px; font-weight: bold;">SAIR</button>
     </div>
   </div>
 
   <div class="main-container">
     <div class="sidebar">
       <div class="glass">
-        <h4 style="margin:0">Novo Endereço</h4>
-        <input type="text" id="addRua" placeholder="Rua (Ex: A)">
-        <input type="text" id="addModulo" placeholder="Módulo (Ex: 001)">
-        <button onclick="window.criarEndereco()" class="btn-confirm">CRIAR LOCAL</button>
+        <h4 style="margin:0 0 10px 0; color: var(--primary);">Novo Endereço</h4>
+        <div style="display:flex; gap:5px;">
+          <input type="text" id="addRua" placeholder="Rua" style="margin:0">
+          <input type="text" id="addModulo" placeholder="Mod" style="margin:0">
+          <button onclick="window.criarEndereco()" style="background:var(--success); color:white; border:none; border-radius:4px; padding:0 15px; cursor:pointer;">OK</button>
+        </div>
       </div>
       <div class="glass" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
-        <h4 style="margin:0">Aguardando (Pendentes)</h4>
-        <div id="pendentesArea" style="overflow-y:auto; margin-top:10px;"></div>
+        <h4 style="margin:0 0 10px 0;"><i class="fas fa-boxes"></i> Pendentes</h4>
+        <div id="pendentesArea" style="overflow-y:auto; flex:1;"></div>
       </div>
     </div>
 
     <div class="content">
-      <div class="glass" style="display:flex; gap:10px;">
-        <input type="text" id="filtroDesc" placeholder="🔍 Pesquisar Fornecedor, Produto ou Código..." onkeyup="window.filtrarEstoque()">
+      <div class="glass" style="display:flex; gap:10px; align-items:center; padding: 10px 15px;">
+        <i class="fas fa-search" style="color:#999"></i>
+        <input type="text" id="filtroDesc" placeholder="Pesquisar por Fornecedor, Produto ou Código..." onkeyup="window.filtrarEstoque()" style="margin:0; border:none; background:transparent;">
       </div>
       <div id="gridEnderecos" class="grid-enderecos"></div>
     </div>
@@ -73,10 +81,10 @@
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top:0">Mover Produto</h3>
-      <div id="modalBody"></div>
-      <button id="btnConfirmarModal" class="btn-confirm">CONFIRMAR MOVIMENTAÇÃO</button>
-      <button onclick="window.fecharModal()" style="background:none; border:none; color:grey; width:100%; margin-top:10px; cursor:pointer;">Cancelar</button>
+      <h3 id="modalTitle" style="margin:0; color:var(--primary);">Movimentar</h3>
+      <div id="modalBody" style="margin: 15px 0;"></div>
+      <button id="btnConfirmarModal" class="btn-confirm">CONFIRMAR</button>
+      <button onclick="window.fecharModal()" style="background:none; border:none; color:grey; width:100%; margin-top:12px; cursor:pointer; font-size:12px;">Cancelar</button>
     </div>
   </div>
 
