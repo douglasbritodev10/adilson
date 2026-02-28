@@ -5,280 +5,211 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 let dbState = { fornecedores: {}, produtos: {}, enderecos: [], volumes: [] };
-let usernameDB = "Usuário";
-let userRole = "leitor";
+let userRole = "leitor"; 
 
-// --- CONTROLE DE ACESSO E PERMISSÕES ---
+// --- 1. CONTROLE DE ACESSO ---
 onAuthStateChanged(auth, async user => {
     if (user) {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
+        
+        let username = user.email.split('@')[0].toUpperCase();
         if (userSnap.exists()) {
             const data = userSnap.data();
-            usernameDB = data.nomeCompleto || "Usuário";
-            userRole = data.role || "leitor";
-            
-            // Exibe botão de novo endereço apenas para Admins
-            const btnEnd = document.getElementById("btnNovoEnd");
-            if(btnEnd) btnEnd.style.display = (userRole === 'admin') ? 'block' : 'none';
+            userRole = (data.role || "leitor").toLowerCase();
+            username = data.nomeCompleto || username;
         }
-        const display = document.getElementById("userDisplay");
-        if(display) display.innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB} (${userRole.toUpperCase()})`;
+
+        document.getElementById("userDisplay").innerHTML = `<i class="fas fa-user-circle"></i> ${username} (${userRole.toUpperCase()})`;
+        
+        // Regra Admin: Criar endereços
+        document.getElementById("areaAdmin").style.display = (userRole === 'admin') ? 'block' : 'none';
+        
         loadAll();
     } else { window.location.href = "index.html"; }
 });
 
+// --- 2. CARREGAMENTO DE DADOS ---
 async function loadAll() {
     try {
-        const [fSnap, pSnap, eSnap, vSnap] = await Promise.all([
-            getDocs(collection(db, "fornecedores")),
-            getDocs(collection(db, "produtos")),
-            getDocs(query(collection(db, "enderecos"), orderBy("rua"), orderBy("modulo"))),
-            getDocs(collection(db, "volumes"))
-        ]);
+        const fSnap = await getDocs(collection(db, "fornecedores"));
+        fSnap.forEach(d => dbState.fornecedores[d.id] = d.data().nome);
 
-        dbState.fornecedores = {};
-        fSnap.forEach(d => dbState.fornecedores[d.id] = { nome: d.data().nome });
-        
-        dbState.produtos = {};
-        pSnap.forEach(d => dbState.produtos[d.id] = { 
-            nome: d.data().nome, 
-            codigo: d.data().codigo || "S/C", 
-            fornecedorId: d.data().fornecedorId 
+        const pSnap = await getDocs(collection(db, "produtos"));
+        pSnap.forEach(d => {
+            const p = d.data();
+            dbState.produtos[d.id] = { 
+                nome: p.nome, 
+                codigo: p.codigo || "S/C", 
+                forn: dbState.fornecedores[p.fornecedorId] || "---" 
+            };
         });
-
-        dbState.enderecos = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        dbState.volumes = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        const selForn = document.getElementById("filtroForn");
-        if(selForn) {
-            selForn.innerHTML = '<option value="">Todos os Fornecedores</option>';
-            const nomes = [...new Set(Object.values(dbState.fornecedores).map(f => f.nome))].sort();
-            nomes.forEach(n => selForn.innerHTML += `<option value="${n}">${n}</option>`);
-        }
         syncUI();
-    } catch (e) { console.error("Erro ao carregar dados:", e); }
+    } catch (e) { console.error(e); }
 }
 
-function syncUI() {
-    const grid = document.getElementById("gridEnderecos");
-    const pendentes = document.getElementById("listaPendentes");
-    if(!grid || !pendentes) return;
+async function syncUI() {
+    const eSnap = await getDocs(query(collection(db, "enderecos"), orderBy("rua"), orderBy("modulo")));
+    dbState.enderecos = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    const vSnap = await getDocs(collection(db, "volumes"));
+    dbState.volumes = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    grid.innerHTML = "";
-    pendentes.innerHTML = "";
-
-    // 1. LISTA DE PENDENTES (LADO ESQUERDO)
-    const falta = dbState.volumes.filter(v => (!v.enderecoId || v.enderecoId === "") && v.quantidade > 0);
-    document.getElementById("countPendentes").innerText = falta.length;
-
-    falta.forEach(v => {
-        const prod = dbState.produtos[v.produtoId] || { nome: "Produto não encontrado", codigo: "S/C" };
-        const forn = dbState.fornecedores[prod.fornecedorId] || { nome: "Sem Fornecedor" };
-        
-        const div = document.createElement("div");
-        div.className = "item-pendente";
-        div.innerHTML = `
-            <small style="color:var(--primary); font-weight:bold; text-transform:uppercase;">${forn.nome}</small><br>
-            <span style="font-size:11px;"><b>Prod: ${prod.codigo}</b> - ${prod.nome}</span><br>
-            <span style="font-size:11px;"><b>Vol: ${v.codigo || 'S/C'}</b> - ${v.descricao}</span><br>
-            <small>Qtd: <b>${v.quantidade}</b></small>
-            ${userRole !== 'leitor' ? `<button onclick="window.abrirAcao('${v.id}', 'guardar')" class="btn" style="background:var(--success); color:white; width:100%; margin-top:5px; padding:4px; font-size:10px;">GUARDAR</button>` : ''}
-        `;
-        pendentes.appendChild(div);
-    });
-
-    // 2. GRID DE ENDEREÇOS (CENTRO)
-    dbState.enderecos.forEach(e => {
-        const vols = dbState.volumes.filter(v => v.enderecoId === e.id && v.quantidade > 0);
-        const card = document.createElement("div");
-        card.className = "card-endereco";
-        
-        let totalUnidadesNoEndereco = 0;
-        let htmlItens = "";
-        let buscaTexto = `${e.rua} ${e.modulo} ${e.nivel} `.toLowerCase();
-
-        vols.forEach(v => {
-            const prod = dbState.produtos[v.produtoId] || { nome: "???", codigo: "S/C" };
-            const forn = dbState.fornecedores[prod.fornecedorId] || { nome: "S/F" };
-            totalUnidadesNoEndereco += v.quantidade;
-            buscaTexto += `${prod.nome} ${prod.codigo} ${forn.nome} ${v.descricao} ${v.codigo || ''} `.toLowerCase();
-
-            htmlItens += `
-                <div class="item-row" style="border-bottom: 1px solid #eee; padding: 6px 0;">
-                    <div class="item-info">
-                        <div style="font-size: 9px; color: var(--primary); font-weight: bold; text-transform: uppercase;">${forn.nome}</div>
-                        <div style="font-size: 11px; font-weight: bold;">P: ${prod.codigo} - ${prod.nome}</div>
-                        <div style="font-size: 10px; color: #555;">V: ${v.codigo || 'S/C'} - ${v.descricao}</div>
-                        <div style="font-size: 11px; color: var(--success); font-weight: bold;">Qtd: ${v.quantidade}</div>
-                    </div>
-                    ${userRole !== 'leitor' ? `
-                        <div style="display:flex; gap:4px; align-items:center;">
-                            <button onclick="window.abrirAcao('${v.id}', 'mover')" class="btn-mini" style="background:var(--info)" title="Mover"><i class="fas fa-exchange-alt"></i></button>
-                            <button onclick="window.abrirAcao('${v.id}', 'saida')" class="btn-mini" style="background:var(--danger)" title="Saída"><i class="fas fa-sign-out-alt"></i></button>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        });
-
-        card.dataset.busca = buscaTexto;
-        card.innerHTML = `
-            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-                RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}
-                ${userRole === 'admin' ? `<i class="fas fa-trash" onclick="window.deletarEndereco('${e.id}')" style="cursor:pointer; font-size:12px;"></i>` : ''}
-            </div>
-            <div class="card-body" style="padding:10px; max-height:200px; overflow-y:auto;">
-                ${htmlItens || '<small style="color:#ccc">Vazio</small>'}
-            </div>
-            <div class="card-footer" style="background:#f8f9fa; font-weight:bold; font-size:11px; text-align:right; padding:4px 10px; border-top:1px solid #ddd;">
-                Total no Local: ${totalUnidadesNoEndereco}
-            </div>
-        `;
-        grid.appendChild(card);
-    });
-    window.filtrarEstoque();
+    renderPendentes();
+    renderEnderecos();
 }
 
-window.abrirAcao = (volId, tipo) => {
-    if(userRole === 'leitor') return;
+// --- 3. LÓGICA DE SOMA INTELIGENTE (O CORAÇÃO DO AJUSTE) ---
+window.abrirMover = (volId) => {
+    if (userRole === "leitor") return alert("Acesso negado: Apenas Operadores ou Admins podem movimentar.");
+    
     const vol = dbState.volumes.find(v => v.id === volId);
-    if(!vol) return;
+    if (!vol) return;
 
     const modal = document.getElementById("modalMaster");
-    const body = document.getElementById("modalBody");
-    const title = document.getElementById("modalTitle");
-    
-    body.innerHTML = `
-        <div style="font-size:12px; background:#f0f7ff; padding:10px; border-radius:5px; margin-bottom:15px;">
-            Item: <b>${vol.descricao}</b><br>Saldo Atual: <b>${vol.quantidade}</b>
-        </div>
-        <label>QUANTIDADE:</label>
-        <input type="number" id="qtdAcao" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; margin-bottom:15px; padding:8px;">
+    document.getElementById("modalBody").innerHTML = `
+        <input type="hidden" id="modalVolId" value="${vol.id}">
+        <p><b>Volume:</b> ${vol.descricao} (${vol.quantidade} un)</p>
+        <label>Destino:</label>
+        <select id="selDestino">
+            <option value="">Selecione o endereço...</option>
+            ${dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo}</option>`).join('')}
+        </select>
+        <label>Quantidade:</label>
+        <input type="number" id="qtdMover" value="${vol.quantidade}" min="1" max="${vol.quantidade}">
     `;
-
-    if (tipo === 'guardar' || tipo === 'mover') {
-        title.innerText = tipo === 'guardar' ? "Endereçar Volume" : "Mover Volume";
-        let opts = dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}</option>`).join('');
-        body.innerHTML += `<label>ENDEREÇO DESTINO:</label><select id="selDestino" style="width:100%; padding:8px;">${opts}</select>`;
-    } else {
-        title.innerText = "Dar Saída";
-    }
-
     modal.style.display = "flex";
 
     document.getElementById("btnConfirmar").onclick = async () => {
-        const qtd = parseInt(document.getElementById("qtdAcao").value);
-        if(isNaN(qtd) || qtd <= 0 || qtd > vol.quantidade) return alert("Quantidade inválida!");
+        const destId = document.getElementById("selDestino").value;
+        const qtd = parseInt(document.getElementById("qtdMover").value);
+
+        if (!destId || isNaN(qtd) || qtd <= 0 || qtd > vol.quantidade) return alert("Dados inválidos!");
 
         try {
-            if (tipo === 'saida') {
-                await updateDoc(doc(db, "volumes", volId), { quantidade: increment(-qtd), ultimaMovimentacao: serverTimestamp() });
-                await addDoc(collection(db, "movimentacoes"), { 
-                    tipo: "SAÍDA", produto: vol.descricao, quantidade: qtd, usuario: usernameDB, data: serverTimestamp() 
+            // BUSCA SE JÁ EXISTE O MESMO PRODUTO + VOLUME NO DESTINO
+            const itemExistente = dbState.volumes.find(v => 
+                v.enderecoId === destId && 
+                v.produtoId === vol.produtoId && 
+                v.descricao === vol.descricao
+            );
+
+            if (itemExistente) {
+                // SOMA 25+25 NO DESTINO
+                await updateDoc(doc(db, "volumes", itemExistente.id), { 
+                    quantidade: increment(qtd),
+                    ultimaMov: serverTimestamp() 
                 });
             } else {
-                const destinoId = document.getElementById("selDestino").value;
-                const endDestino = dbState.enderecos.find(e => e.id === destinoId);
-                const localizacao = `R${endDestino.rua}-M${endDestino.modulo}-N${endDestino.nivel}`;
-
-                // Lógica de aglutinação (Soma se o volume já existir no destino)
-                const volExistente = dbState.volumes.find(v => 
-                    v.enderecoId === destinoId && v.produtoId === vol.produtoId && v.codigo === vol.codigo
-                );
-
-                if (volExistente) {
-                    await updateDoc(doc(db, "volumes", volExistente.id), { quantidade: increment(qtd), ultimaMovimentacao: serverTimestamp() });
-                } else {
-                    if (qtd === vol.quantidade) {
-                        await updateDoc(doc(db, "volumes", volId), { enderecoId: destinoId, ultimaMovimentacao: serverTimestamp() });
-                    } else {
-                        await addDoc(collection(db, "volumes"), {
-                            produtoId: vol.produtoId, descricao: vol.descricao, codigo: vol.codigo || "",
-                            quantidade: qtd, enderecoId: destinoId, ultimaMovimentacao: serverTimestamp()
-                        });
-                    }
-                }
-
-                if (qtd < vol.quantidade) {
-                    await updateDoc(doc(db, "volumes", volId), { quantidade: increment(-qtd) });
-                } else if (volExistente && qtd === vol.quantidade) {
-                    await deleteDoc(doc(db, "volumes", volId));
-                }
-
-                await addDoc(collection(db, "movimentacoes"), { 
-                    tipo: tipo.toUpperCase() === 'GUARDAR' ? "ENTRADA" : "TRANSFERÊNCIA", 
-                    produto: vol.descricao, quantidade: qtd, destino: localizacao, usuario: usernameDB, data: serverTimestamp() 
+                // CRIA NOVO SE NÃO EXISTIR LÁ
+                await addDoc(collection(db, "volumes"), {
+                    produtoId: vol.produtoId,
+                    descricao: vol.descricao,
+                    codigoVol: vol.codigoVol || "",
+                    quantidade: qtd,
+                    enderecoId: destId,
+                    dataMov: serverTimestamp()
                 });
             }
-            window.fecharModal(); loadAll();
-        } catch (err) { console.error(err); alert("Erro ao processar!"); }
+
+            // ATUALIZA ORIGEM (Subtrai ou remove)
+            const novaQtdOrigem = vol.quantidade - qtd;
+            await updateDoc(doc(db, "volumes", vol.id), {
+                quantidade: novaQtdOrigem,
+                enderecoId: novaQtdOrigem === 0 ? "" : vol.enderecoId
+            });
+
+            window.fecharModal();
+            syncUI();
+        } catch (e) { alert("Erro ao salvar!"); }
     };
 };
 
-window.abrirNovoEndereco = () => {
-    if(userRole !== 'admin') return;
-    const modal = document.getElementById("modalMaster");
-    const body = document.getElementById("modalBody");
-    const title = document.getElementById("modalTitle");
+// --- 4. RENDERIZAÇÃO E FILTROS ---
+function renderEnderecos() {
+    const grid = document.getElementById("gridEnderecos");
+    grid.innerHTML = "";
+    let count = 0;
 
-    title.innerText = "Cadastrar Novo Endereço";
-    body.innerHTML = `
-        <label>RUA:</label><input type="text" id="addRua" style="width:100%; margin-bottom:10px; padding:8px;">
-        <label>MÓDULO:</label><input type="number" id="addMod" style="width:100%; margin-bottom:10px; padding:8px;">
-        <label>NÍVEL:</label><input type="number" id="addNiv" value="1" style="width:100%; padding:8px;">
-    `;
-    modal.style.display = "flex";
-
-    document.getElementById("btnConfirmar").onclick = async () => {
-        const rua = document.getElementById("addRua").value.trim().toUpperCase();
-        const mod = document.getElementById("addMod").value.trim();
-        const niv = document.getElementById("addNiv").value.trim();
-        if(!rua || !mod) return alert("Preencha Rua e Módulo!");
+    dbState.enderecos.forEach(end => {
+        const vols = dbState.volumes.filter(v => v.enderecoId === end.id && v.quantidade > 0);
+        const card = document.createElement('div');
+        card.className = "card-endereco";
         
-        const existe = dbState.enderecos.find(e => e.rua === rua && e.modulo === mod && e.nivel === niv);
-        if(existe) return alert("Endereço já cadastrado!");
+        // Texto invisível para busca rápida
+        let metaBusca = `RUA ${end.rua} MOD ${end.modulo} `;
+        
+        let htmlVols = vols.map(v => {
+            const p = dbState.produtos[v.produtoId] || {nome:"Excluído", forn:"--", codigo:"--"};
+            metaBusca += `${p.nome} ${p.forn} ${p.codigo} ${v.descricao} `;
+            
+            return `
+            <div class="vol-item">
+                <div class="vol-info">
+                    <small>${p.forn}</small><br>
+                    <b>${p.nome}</b> [${p.codigo}]<br>
+                    <small>${v.descricao} | Qtd: <b>${v.quantidade}</b></small>
+                </div>
+                ${(userRole !== 'leitor') ? `
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="window.abrirMover('${v.id}')" class="btn-action" style="background:var(--primary)"><i class="fas fa-exchange-alt"></i></button>
+                        <button onclick="window.darSaida('${v.id}', ${v.quantidade})" class="btn-action" style="background:var(--danger)"><i class="fas fa-minus"></i></button>
+                    </div>
+                ` : ''}
+            </div>`;
+        }).join('');
 
-        await addDoc(collection(db, "enderecos"), { rua, modulo: mod, nivel: niv });
-        window.fecharModal(); loadAll();
-    };
+        card.dataset.busca = metaBusca.toLowerCase();
+        card.innerHTML = `
+            <div class="card-header">
+                <span>RUA ${end.rua} - MOD ${end.modulo}</span>
+                ${(userRole === 'admin') ? `<i class="fas fa-trash" onclick="window.deletarLocal('${end.id}')" style="cursor:pointer; opacity:0.5"></i>` : ''}
+            </div>
+            ${htmlVols || '<p style="padding:10px; color:#999; font-size:12px;">Vazio</p>'}
+        `;
+        grid.appendChild(card);
+        count++;
+    });
+    document.getElementById("countDisplay").innerText = count;
+}
+
+function renderPendentes() {
+    const area = document.getElementById("pendentesArea");
+    area.innerHTML = "";
+    dbState.volumes.filter(v => v.quantidade > 0 && !v.enderecoId).forEach(v => {
+        const p = dbState.produtos[v.produtoId] || {nome:"---"};
+        area.innerHTML += `
+            <div class="vol-item" style="background:white; margin-bottom:5px; border-radius:6px; flex-direction:column; align-items:flex-start;">
+                <div style="font-size:12px;"><b>${p.nome}</b></div>
+                <div style="font-size:11px; color:#666;">${v.descricao} (Qtd: ${v.quantidade})</div>
+                ${(userRole !== 'leitor') ? `<button onclick="window.abrirMover('${v.id}')" style="width:100%; margin-top:5px; cursor:pointer; background:var(--warning); border:none; border-radius:4px; font-weight:bold;">ENDEREÇAR</button>` : ''}
+            </div>`;
+    });
+}
+
+// --- 5. FUNÇÕES AUXILIARES ---
+window.filtrarEstoque = () => {
+    const termo = document.getElementById("filtroGeral").value.toLowerCase();
+    document.querySelectorAll(".card-endereco").forEach(card => {
+        card.style.display = card.dataset.busca.includes(termo) ? "flex" : "none";
+    });
 };
 
-window.deletarEndereco = async (id) => {
-    if(userRole !== 'admin') return;
-    if(confirm("Excluir endereço? Os itens voltarão para PENDENTES.")){
-        try {
-            const afetados = dbState.volumes.filter(v => v.enderecoId === id);
-            for(let v of afetados) { 
-                await updateDoc(doc(db, "volumes", v.id), { enderecoId: "" }); 
-            }
-            await deleteDoc(doc(db, "enderecos", id));
-            loadAll();
-        } catch(e) { console.error(e); alert("Erro ao excluir."); }
+window.criarEndereco = async () => {
+    const rua = document.getElementById("addRua").value.toUpperCase();
+    const mod = document.getElementById("addModulo").value;
+    if(!rua || !mod) return alert("Preencha Rua e Módulo!");
+    await addDoc(collection(db, "enderecos"), { rua, modulo: mod, data: serverTimestamp() });
+    syncUI();
+};
+
+window.darSaida = async (id, max) => {
+    const q = prompt("Quantidade para saída:", max);
+    if(q && parseInt(q) > 0 && parseInt(q) <= max) {
+        await updateDoc(doc(db, "volumes", id), { quantidade: increment(-parseInt(q)) });
+        syncUI();
     }
 };
 
-window.filtrarEstoque = () => {
-    const fCod = document.getElementById("filtroCod")?.value.toLowerCase() || "";
-    const fForn = document.getElementById("filtroForn")?.value.toLowerCase() || "";
-    const fDesc = document.getElementById("filtroDesc")?.value.toLowerCase() || "";
-    let c = 0;
-    document.querySelectorAll(".card-endereco").forEach(card => {
-        const busca = card.dataset.busca || "";
-        const match = busca.includes(fCod) && busca.includes(fDesc) && (fForn === "" || busca.includes(fForn));
-        card.style.display = match ? "flex" : "none";
-        if(match) c++;
-    });
-    const countDisp = document.getElementById("countDisplay");
-    if(countDisp) countDisp.innerText = c;
-};
-
-window.limparFiltros = () => {
-    document.getElementById("filtroCod").value = "";
-    document.getElementById("filtroForn").value = "";
-    document.getElementById("filtroDesc").value = "";
-    window.filtrarEstoque();
-};
-
-window.fecharModal = () => { document.getElementById("modalMaster").style.display = "none"; };
+window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
 window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
