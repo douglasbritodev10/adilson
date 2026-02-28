@@ -13,14 +13,12 @@
     }
     body { background-color: #f1f3f5; margin: 0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; }
     
-    /* Nav Bar */
     .top-nav { background: var(--primary); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); }
     .btn-nav { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 15px; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: 600; transition: 0.3s; font-size: 13px; }
     .btn-nav:hover { background: rgba(255,255,255,0.3); }
 
     .main-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; padding: 20px; height: calc(100vh - 65px); box-sizing: border-box; }
 
-    /* Painel Esquerdo: Não Endereçados */
     .panel-pendentes { background: white; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; }
     .panel-header { background: var(--danger); color: white; padding: 15px; font-weight: bold; text-align: center; font-size: 14px; letter-spacing: 1px; }
     .list-pendentes { overflow-y: auto; flex-grow: 1; padding: 15px; background: #fffcfc; }
@@ -31,26 +29,13 @@
     }
     .card-pendente:hover { transform: translateX(5px); }
 
-    /* Painel Direito: Endereços e Cadastro */
     .cadastro-bar { background: white; padding: 20px; border-radius: 12px; display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px; box-shadow: var(--shadow); }
     .field-group { display: flex; flex-direction: column; gap: 8px; }
     .field-group label { font-size: 11px; font-weight: 800; color: var(--secondary); text-transform: uppercase; }
     .field-group input, .field-group select { padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; outline: none; }
-    .field-group input:focus { border-color: var(--primary); }
 
     .grid-enderecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; overflow-y: auto; padding-bottom: 50px; align-content: start; }
     
-    /* Cards de Endereço */
-    .card-endereco { background: white; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; }
-    .card-end-header { background: var(--secondary); color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; }
-    .card-end-body { padding: 12px; min-height: 80px; flex-grow: 1; display: flex; flex-direction: column; gap: 10px; }
-
-    .vol-item { background: #f8f9fa; border: 1px solid #eee; padding: 12px; border-radius: 8px; position: relative; border-left: 4px solid var(--primary); }
-    .vol-item-forn { font-size: 10px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 4px; }
-    .vol-item-desc { font-size: 12px; font-weight: 600; color: #333; line-height: 1.3; }
-    .vol-item-actions { display: flex; gap: 8px; margin-top: 10px; }
-
-    /* Modais */
     .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000; backdrop-filter: blur(5px); }
     .modal-content { background: white; padding: 30px; border-radius: 15px; width: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
     
@@ -58,8 +43,6 @@
     .btn-success { background: var(--success); }
     .btn-primary { background: var(--primary); }
     .btn-danger { background: var(--danger); }
-    .btn-outline-warn { background: transparent; border: 1px solid var(--warning); color: var(--warning); }
-    .btn-outline-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
   </style>
 </head>
 <body>
@@ -85,6 +68,28 @@
         <div class="field-group"><label>MOD/PRAT</label><input type="text" id="addModulo" placeholder="001" style="width: 90px;"></div>
         <div class="field-group"><label>NÍVEL</label><input type="text" id="addNivel" placeholder="01" style="width: 70px;"></div>
         <button class="btn-action btn-primary" id="btnCriarEndereco" style="height: 44px;"><i class="fas fa-plus"></i> CRIAR ENDEREÇO</button>
+      </div>
+
+      <div class="cadastro-bar" style="background: #e9ecef; margin-top: -10px; border-bottom: 2px solid var(--primary); gap: 12px;">
+        <div class="field-group" style="width: 110px;">
+          <label>CÓDIGO:</label>
+          <input type="text" id="filtroCod" placeholder="SKU..." onkeyup="window.filtrarEstoque()">
+        </div>
+        <div class="field-group" style="width: 200px;">
+          <label>FORNECEDOR:</label>
+          <select id="filtroForn" onchange="window.filtrarEstoque()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="field-group" style="flex-grow: 1;">
+          <label>BUSCAR PRODUTO / VOLUME:</label>
+          <input type="text" id="filtroDesc" placeholder="🔍 Digite o nome ou volume..." onkeyup="window.filtrarEstoque()">
+        </div>
+        <div class="field-group" style="width: 130px;">
+            <label>ENCONTRADOS:</label>
+            <input type="text" id="countFiltro" readonly style="background: #f8f9fa; font-weight: bold; text-align: center;">
+        </div>
+        <button class="btn-action" onclick="window.limparFiltros()" style="background:var(--secondary); height: 40px; padding: 0 15px;"><i class="fas fa-eraser"></i></button>
       </div>
       
       <div class="grid-enderecos" id="gridEnderecos"></div>
