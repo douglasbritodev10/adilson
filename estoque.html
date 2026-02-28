@@ -5,89 +5,125 @@
   <title>Simonetti - Gestão de Estoque</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
-    :root { --primary: #004a99; --danger: #ff4d4d; --success: #00c853; --warning: #ffab00; }
-    body { background: #001f3f; margin: 0; font-family: 'Segoe UI', sans-serif; color: #333; height: 100vh; overflow: hidden; }
-    
-    /* Topo */
-    .top-nav { background: rgba(0,0,0,0.3); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); height: 50px; }
-    .nav-left, .nav-right { display: flex; align-items: center; gap: 15px; color: white; }
-    .btn-back { color: white; font-size: 20px; text-decoration: none; background: rgba(255,255,255,0.1); width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+    :root {
+      --primary: #004a99; --glass: rgba(255, 255, 255, 0.88);
+      --danger: #ff4d4d; --success: #00c853; --warning: #ffab00; --info: #17a2b8;
+    }
+    body { 
+      background: linear-gradient(135deg, #001f3f 0%, #004a99 100%);
+      background-attachment: fixed; margin: 0; font-family: 'Segoe UI', sans-serif; 
+      height: 100vh; overflow: hidden; color: #333;
+    }
 
-    /* Layout */
-    .main-container { display: flex; height: calc(100vh - 50px); padding: 15px; gap: 15px; box-sizing: border-box; }
-    .sidebar { width: 300px; display: flex; flex-direction: column; gap: 10px; }
-    .content { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+    .top-nav { 
+      background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(15px);
+      padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .user-badge { background: rgba(255,255,255,0.15); padding: 5px 15px; border-radius: 20px; color: white; font-size: 13px; }
+    
+    .main-layout { display: flex; height: calc(100vh - 60px); }
 
-    .glass { background: rgba(255,255,255,0.95); border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-    .grid-enderecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; overflow-y: auto; padding-bottom: 20px; }
+    /* Lado Esquerdo: Pendentes */
+    .sidebar { 
+      width: 320px; background: var(--glass); backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(0,0,0,0.1); display: flex; flex-direction: column;
+    }
+    .sidebar-header { padding: 15px; background: var(--primary); color: white; font-weight: bold; display: flex; justify-content: space-between; }
+    .scroll-area { flex: 1; overflow-y: auto; padding: 10px; }
     
-    /* Card de Endereço */
-    .card-endereco { background: white; border-radius: 8px; border: 1px solid #ccc; display: flex; flex-direction: column; max-height: 400px; }
-    .card-header { background: #eef2f7; padding: 10px; font-weight: bold; display: flex; justify-content: space-between; border-radius: 8px 8px 0 0; border-bottom: 1px solid #ccc; color: var(--primary); }
-    .total-end { background: var(--warning); padding: 2px 8px; border-radius: 4px; font-size: 11px; color: black; }
+    .item-pendente { 
+      background: white; margin-bottom: 10px; padding: 12px; border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid var(--warning);
+    }
 
-    /* Item Interno (Volume) */
-    .vol-item { border: 1px solid #eee; margin: 8px; padding: 10px; border-left: 5px solid var(--primary); border-radius: 4px; background: #fff; }
-    .forn-name { font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; margin-bottom: 3px; }
-    .prod-info { font-size: 13px; font-weight: 800; margin-bottom: 5px; }
-    .vol-info { font-size: 11px; color: #444; background: #f4f4f4; padding: 6px; border-radius: 4px; line-height: 1.4; }
+    /* Lado Direito: Grid */
+    .content { flex: 1; overflow-y: auto; padding: 20px; }
+    .glass-panel { 
+      background: var(--glass); padding: 15px; border-radius: 12px; 
+      margin-bottom: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    .grid-enderecos { 
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
+      gap: 15px; 
+    }
+    .card-endereco { 
+      background: white; border-radius: 8px; overflow: hidden; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid #eee; display: flex; flex-direction: column;
+      transition: transform 0.2s;
+    }
+    .card-endereco:hover { transform: translateY(-3px); }
+    .card-header { background: #f8f9fa; padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; font-weight: bold; text-align: center; position: relative; }
+    .card-body { padding: 10px; flex: 1; font-size: 12px; }
+    .card-footer { background: #eee; padding: 4px 8px; font-size: 10px; text-align: right; font-weight: bold; }
+
+    /* Estilo dos itens dentro do card */
+    .item-row { border-bottom: 1px solid #f0f0f0; padding: 6px 0; display: flex; justify-content: space-between; align-items: flex-start; }
+    .item-info { flex: 1; margin-right: 5px; }
+    .btn-mini { border: none; border-radius: 3px; padding: 3px 6px; font-size: 10px; cursor: pointer; color: white; margin-left: 2px; }
+
+    /* Botões e Inputs */
+    .btn { cursor: pointer; border: none; border-radius: 4px; padding: 8px 12px; font-weight: bold; transition: 0.2s; }
+    .btn:hover { opacity: 0.8; }
+    input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+
+    /* Modal */
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: white; padding: 25px; border-radius: 12px; width: 350px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
     
-    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:1000; }
-    .modal-content { background:white; padding:25px; border-radius:12px; width:350px; }
-    input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-    .btn-confirm { background: var(--primary); color: white; border: none; padding: 12px; width: 100%; cursor: pointer; border-radius: 6px; font-weight: bold; }
-    
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+    .btn-delete-end { position: absolute; right: 5px; top: 5px; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 14px; }
   </style>
 </head>
 <body>
 
-  <div class="top-nav">
-    <div class="nav-left">
-      <a href="dashboard.html" class="btn-back"><i class="fas fa-arrow-left"></i></a>
-      <span style="font-weight: bold; letter-spacing: 1px;">SISTEMA DE ESTOQUE</span>
+  <nav class="top-nav">
+    <div style="display:flex; align-items:center; gap:15px;">
+      <a href="dashboard.html" style="color:white; font-size:20px;"><i class="fas fa-arrow-left"></i></a>
+      <span style="color:white; font-weight:bold; letter-spacing: 1px;">SIMONETTI | ESTOQUE</span>
     </div>
-    <div class="nav-right">
-      <span id="userDisplay"><i class="fas fa-user-circle"></i> Carregando...</span>
-      <button onclick="window.logout()" style="background:var(--danger); border:none; color:white; padding:6px 12px; border-radius:4px; cursor:pointer; font-size: 11px; font-weight: bold;">SAIR</button>
+    <div style="display:flex; gap:15px; align-items:center;">
+      <button id="btnNovoEnd" onclick="window.abrirNovoEndereco()" class="btn" style="background:var(--success); color:white; display:none;">+ NOVO ENDEREÇO</button>
+      <div id="userDisplay" class="user-badge">...</div>
+      <button onclick="window.logout()" style="background:none; border:none; color:white; cursor:pointer;"><i class="fas fa-sign-out-alt"></i></button>
     </div>
-  </div>
+  </nav>
 
-  <div class="main-container">
+  <div class="main-layout">
     <div class="sidebar">
-      <div class="glass">
-        <h4 style="margin:0 0 10px 0; color: var(--primary);">Novo Endereço</h4>
-        <div style="display:flex; gap:5px;">
-          <input type="text" id="addRua" placeholder="Rua" style="margin:0">
-          <input type="text" id="addModulo" placeholder="Mod" style="margin:0">
-          <button onclick="window.criarEndereco()" style="background:var(--success); color:white; border:none; border-radius:4px; padding:0 15px; cursor:pointer;">OK</button>
-        </div>
+      <div class="sidebar-header">
+        <span><i class="fas fa-boxes"></i> PENDENTES</span>
+        <span id="countPendentes">0</span>
       </div>
-      <div class="glass" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
-        <h4 style="margin:0 0 10px 0;"><i class="fas fa-boxes"></i> Pendentes</h4>
-        <div id="pendentesArea" style="overflow-y:auto; flex:1;"></div>
-      </div>
+      <div id="listaPendentes" class="scroll-area"></div>
     </div>
 
     <div class="content">
-      <div class="glass" style="display:flex; gap:10px; align-items:center; padding: 10px 15px;">
-        <i class="fas fa-search" style="color:#999"></i>
-        <input type="text" id="filtroDesc" placeholder="Pesquisar por Fornecedor, Produto ou Código..." onkeyup="window.filtrarEstoque()" style="margin:0; border:none; background:transparent;">
+      <div class="glass-panel" style="display:flex; gap:10px; align-items:center;">
+          <input type="text" id="filtroCod" placeholder="Cód. Prod/SKU" onkeyup="window.filtrarEstoque()" style="width:130px;">
+          <select id="filtroForn" onchange="window.filtrarEstoque()" style="flex:1;">
+              <option value="">Todos os Fornecedores</option>
+          </select>
+          <input type="text" id="filtroDesc" placeholder="Descrição..." onkeyup="window.filtrarEstoque()" style="flex:2;">
+          <button onclick="window.limparFiltros()" class="btn" style="background:#6c757d; color:white;"><i class="fas fa-eraser"></i></button>
+          <div id="countDisplay" style="background:var(--primary); color:white; padding:8px 15px; border-radius:5px; font-weight:bold;">0</div>
       </div>
+
       <div id="gridEnderecos" class="grid-enderecos"></div>
     </div>
   </div>
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin:0; color:var(--primary);">Movimentar</h3>
-      <div id="modalBody" style="margin: 15px 0;"></div>
-      <button id="btnConfirmarModal" class="btn-confirm">CONFIRMAR</button>
-      <button onclick="window.fecharModal()" style="background:none; border:none; color:grey; width:100%; margin-top:12px; cursor:pointer; font-size:12px;">Cancelar</button>
+      <h3 id="modalTitle" style="margin-top:0; color:var(--primary);">Ação</h3>
+      <div id="modalBody"></div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button onclick="window.fecharModal()" class="btn">Cancelar</button>
+        <button id="btnConfirmar" class="btn" style="background:var(--primary); color:white;">Confirmar</button>
+      </div>
     </div>
   </div>
 
-  <script type="module" src="estoque.js"></script>
+  <script type="module" src="js/estoque.js"></script>
 </body>
 </html>
