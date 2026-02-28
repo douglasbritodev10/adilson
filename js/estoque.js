@@ -140,7 +140,7 @@ function renderEnderecos() {
     window.filtrarEstoque();
 }
 
-// --- LÓGICA DE MOVIMENTAÇÃO (DIVISÃO E MESCLAGEM) ---
+// --- LÓGICA DE MOVIMENTAÇÃO ---
 window.abrirMover = (volId) => {
     const vol = dbState.volumes.find(v => v.id === volId);
     if (!vol) return;
@@ -189,14 +189,12 @@ async function processarTransferencia(volIdOrigem, endIdDestino, qtd) {
         const volOrigem = dbState.volumes.find(v => v.id === volIdOrigem);
         const endDestino = dbState.enderecos.find(e => e.id === endIdDestino);
         
-        // Verifica se já existe esse MESMO produto com essa MESMA descrição no destino para mesclar
         const volNoDestino = dbState.volumes.find(v => 
             v.enderecoId === endIdDestino && 
             v.produtoId === volOrigem.produtoId && 
             v.descricao === volOrigem.descricao
         );
 
-        // Caso 1: Mover TUDO
         if (qtd === volOrigem.quantidade) {
             if (volNoDestino) {
                 await updateDoc(doc(db, "volumes", volNoDestino.id), { 
@@ -210,9 +208,7 @@ async function processarTransferencia(volIdOrigem, endIdDestino, qtd) {
                     ultimaMovimentacao: serverTimestamp()
                 });
             }
-        } 
-        // Caso 2: Mover APENAS PARTE (Divisão/Split)
-        else {
+        } else {
             await updateDoc(doc(db, "volumes", volIdOrigem), { 
                 quantidade: increment(-qtd),
                 ultimaMovimentacao: serverTimestamp()
@@ -234,7 +230,6 @@ async function processarTransferencia(volIdOrigem, endIdDestino, qtd) {
             }
         }
 
-        // Histórico
         const tipoAcao = (!volOrigem.enderecoId) ? "Entrada/Guardar" : "Logística";
         await addDoc(collection(db, "movimentacoes"), {
             produto: volOrigem.descricao,
@@ -254,7 +249,40 @@ async function processarTransferencia(volIdOrigem, endIdDestino, qtd) {
     }
 }
 
-// --- OUTRAS FUNÇÕES ---
+// --- FILTROS E PESQUISA ---
+window.limparFiltros = () => {
+    document.getElementById("filtroCod").value = "";
+    document.getElementById("filtroDesc").value = "";
+    document.getElementById("filtroForn").value = "";
+
+    localStorage.removeItem('f_est_cod');
+    localStorage.removeItem('f_est_desc');
+    localStorage.removeItem('f_est_forn');
+
+    window.filtrarEstoque();
+};
+
+window.filtrarEstoque = () => {
+    const fCod = document.getElementById("filtroCod").value.toLowerCase();
+    const fForn = document.getElementById("filtroForn").value.toLowerCase();
+    const fDesc = document.getElementById("filtroDesc").value.toLowerCase();
+
+    localStorage.setItem('f_est_cod', fCod);
+    localStorage.setItem('f_est_forn', document.getElementById("filtroForn").value);
+    localStorage.setItem('f_est_desc', fDesc);
+
+    let c = 0;
+    document.querySelectorAll(".card-endereco").forEach(card => {
+        const b = card.dataset.busca;
+        const m = b.includes(fCod) && (fForn === "" || b.includes(fForn)) && b.includes(fDesc);
+        card.style.display = m ? "block" : "none";
+        if(m) c++;
+    });
+    const disp = document.getElementById("countDisplay");
+    if(disp) disp.innerText = c;
+};
+
+// --- FUNÇÕES AUXILIARES ---
 window.darSaida = (volId) => {
     const vol = dbState.volumes.find(v => v.id === volId);
     const p = dbState.produtos[vol.produtoId] || {};
@@ -279,29 +307,10 @@ window.darSaida = (volId) => {
                 usuario: usernameDB, 
                 data: serverTimestamp() 
             });
-            fecharModal(); syncUI();
+            window.fecharModal(); 
+            syncUI();
         }
     };
-};
-
-window.filtrarEstoque = () => {
-    const fCod = document.getElementById("filtroCod").value.toLowerCase();
-    const fForn = document.getElementById("filtroForn").value.toLowerCase();
-    const fDesc = document.getElementById("filtroDesc").value.toLowerCase();
-
-    localStorage.setItem('f_est_cod', fCod);
-    localStorage.setItem('f_est_forn', document.getElementById("filtroForn").value);
-    localStorage.setItem('f_est_desc', fDesc);
-
-    let c = 0;
-    document.querySelectorAll(".card-endereco").forEach(card => {
-        const b = card.dataset.busca;
-        const m = b.includes(fCod) && (fForn === "" || b.includes(fForn)) && b.includes(fDesc);
-        card.style.display = m ? "block" : "none";
-        if(m) c++;
-    });
-    const disp = document.getElementById("countDisplay");
-    if(disp) disp.innerText = c;
 };
 
 window.criarEndereco = async () => {
