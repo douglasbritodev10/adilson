@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Móveis Simonetti - Gestão de Estoque Profissional</title>
+  <title>Móveis Simonetti - Gestão de Estoque</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     :root {
@@ -11,54 +11,44 @@
       --danger: #dc3545; --warning: #f39c12; --light: #f8f9fa;
       --border: #dee2e6; --shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    body { background-color: #f1f3f5; margin: 0; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; }
+    body { background-color: #f1f3f5; margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
     
     .top-nav { background: var(--primary); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); }
-    .btn-nav { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 15px; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: 600; transition: 0.3s; font-size: 13px; }
-    .btn-nav:hover { background: rgba(255,255,255,0.3); }
-
-    .main-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; padding: 20px; height: calc(100vh - 65px); box-sizing: border-box; }
-
-    .panel-pendentes { background: white; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; }
-    .panel-header { background: var(--danger); color: white; padding: 15px; font-weight: bold; text-align: center; font-size: 14px; letter-spacing: 1px; }
-    .list-pendentes { overflow-y: auto; flex-grow: 1; padding: 15px; background: #fffcfc; }
+    .btn-nav { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 15px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; }
     
-    .card-pendente { 
-        background: #fff; border: 1px solid #eee; padding: 15px; margin-bottom: 12px; border-radius: 10px; 
-        border-left: 5px solid var(--danger); transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    }
-    .card-pendente:hover { transform: translateX(5px); }
-
-    .cadastro-bar { background: white; padding: 20px; border-radius: 12px; display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px; box-shadow: var(--shadow); }
-    .field-group { display: flex; flex-direction: column; gap: 8px; }
-    .field-group label { font-size: 11px; font-weight: 800; color: var(--secondary); text-transform: uppercase; }
-    .field-group input, .field-group select { padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; outline: none; }
-
-    .grid-enderecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; overflow-y: auto; padding-bottom: 50px; align-content: start; }
+    .main-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; padding: 20px; height: calc(100vh - 70px); }
     
-    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000; backdrop-filter: blur(5px); }
-    .modal-content { background: white; padding: 30px; border-radius: 15px; width: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+    .panel-pendentes { background: #fff; border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { background: var(--secondary); color: white; padding: 15px; font-weight: bold; font-size: 14px; text-align: center; }
+    .list-pendentes { padding: 15px; overflow-y: auto; flex-grow: 1; background: #fdfdfd; }
     
-    .btn-action { padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 12px; }
-    .btn-success { background: var(--success); }
-    .btn-primary { background: var(--primary); }
-    .btn-danger { background: var(--danger); }
+    .cadastro-bar { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border); display: flex; align-items: flex-end; gap: 15px; }
+    .field-group { display: flex; flex-direction: column; gap: 5px; }
+    .field-group label { font-size: 11px; font-weight: bold; color: var(--secondary); }
+    .field-group input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
+
+    .grid-enderecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 15px; padding-bottom: 50px; }
+    
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: var(--shadow); }
+    
+    .btn-confirm { background: var(--success); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; }
   </style>
 </head>
 <body>
 
   <div class="top-nav">
     <div>
-      <a href="dashboard.html" class="btn-nav"><i class="fas fa-chevron-left"></i> VOLTAR</a>
-      <span id="labelUser" style="margin-left: 20px; font-size: 13px; font-weight: 600; opacity: 0.9;">Olá...</span>
+        <a href="produtos.html" class="btn-nav">← VOLTAR</a>
+        <span id="labelUser" style="margin-left: 15px; font-weight: bold; text-transform: uppercase;">Olá...</span>
     </div>
-    <div style="font-weight: 900; letter-spacing: 2px; font-size: 18px;">MAPA DE ENDEREÇAMENTO</div>
-    <button onclick="window.logout()" class="btn-nav" style="background: var(--danger); border:none;">SAIR DO SISTEMA</button>
+    <div style="font-weight: bold; font-size: 18px;">MAPA DE ESTOQUE</div>
+    <button onclick="window.logout()" class="btn-nav" style="background: var(--danger);">SAIR</button>
   </div>
 
   <div class="main-layout">
     <div class="panel-pendentes">
-      <div class="panel-header"><i class="fas fa-boxes"></i> VOLUMES NÃO ENDEREÇADOS</div>
+      <div class="panel-header"><i class="fas fa-boxes"></i> AGUARDANDO ENDEREÇO</div>
       <div id="listaPendentes" class="list-pendentes"></div>
     </div>
 
@@ -67,29 +57,7 @@
         <div class="field-group"><label>RUA</label><input type="text" id="addRua" placeholder="A" style="width: 70px;"></div>
         <div class="field-group"><label>MOD/PRAT</label><input type="text" id="addModulo" placeholder="001" style="width: 90px;"></div>
         <div class="field-group"><label>NÍVEL</label><input type="text" id="addNivel" placeholder="01" style="width: 70px;"></div>
-        <button class="btn-action btn-primary" id="btnCriarEndereco" style="height: 44px;"><i class="fas fa-plus"></i> CRIAR ENDEREÇO</button>
-      </div>
-
-      <div class="cadastro-bar" style="background: #e9ecef; margin-top: -10px; border-bottom: 2px solid var(--primary); gap: 12px;">
-        <div class="field-group" style="width: 110px;">
-          <label>CÓDIGO:</label>
-          <input type="text" id="filtroCod" placeholder="SKU..." onkeyup="window.filtrarEstoque()">
-        </div>
-        <div class="field-group" style="width: 200px;">
-          <label>FORNECEDOR:</label>
-          <select id="filtroForn" onchange="window.filtrarEstoque()">
-            <option value="">Todos</option>
-          </select>
-        </div>
-        <div class="field-group" style="flex-grow: 1;">
-          <label>BUSCAR PRODUTO / VOLUME:</label>
-          <input type="text" id="filtroDesc" placeholder="🔍 Digite o nome ou volume..." onkeyup="window.filtrarEstoque()">
-        </div>
-        <div class="field-group" style="width: 130px;">
-            <label>ENCONTRADOS:</label>
-            <input type="text" id="countFiltro" readonly style="background: #f8f9fa; font-weight: bold; text-align: center;">
-        </div>
-        <button class="btn-action" onclick="window.limparFiltros()" style="background:var(--secondary); height: 40px; padding: 0 15px;"><i class="fas fa-eraser"></i></button>
+        <button class="btn-nav" id="btnCriarEndereco" style="background: var(--primary); height: 38px;"><i class="fas fa-plus"></i> CRIAR ENDEREÇO</button>
       </div>
       
       <div class="grid-enderecos" id="gridEnderecos"></div>
@@ -98,15 +66,15 @@
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h2 id="modalTitle" style="margin:0 0 20px 0; color:var(--primary); font-size: 18px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Ação</h2>
+      <h2 id="modalTitle" style="margin-top:0; color:var(--primary); font-size: 18px;">Endereçar Volume</h2>
       <div id="modalBody"></div>
-      <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:25px;">
-        <button onclick="fecharModal()" class="btn-action" style="background:#6c757d;">CANCELAR</button>
-        <button id="btnConfirmarModal" class="btn-action btn-success">CONFIRMAR</button>
+      <div style="display:flex; gap: 10px; margin-top: 20px;">
+          <button onclick="window.fecharModal()" style="background:#ccc; border:none; flex:1; padding:10px; border-radius:6px; cursor:pointer;">Cancelar</button>
+          <button id="btnConfirmar" class="btn-confirm" style="flex:2; margin-top:0;">Confirmar</button>
       </div>
     </div>
   </div>
 
-  <script type="module" src="js/estoque.js"></script>
+  <script type="module" src="estoque.js"></script>
 </body>
 </html>
