@@ -24,9 +24,9 @@
     
     .main-layout { display: flex; height: calc(100vh - 60px); }
 
-    /* Lado Esquerdo: Itens para Armazenar */
+    /* Lado Esquerdo: Pendentes */
     .sidebar { 
-      width: 350px; background: var(--glass); backdrop-filter: blur(10px);
+      width: 320px; background: var(--glass); backdrop-filter: blur(10px);
       border-right: 1px solid rgba(0,0,0,0.1); display: flex; flex-direction: column;
     }
     .sidebar-header { padding: 15px; background: var(--primary); color: white; font-weight: bold; display: flex; justify-content: space-between; }
@@ -44,28 +44,25 @@
       margin-bottom: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     }
 
-    .search-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .grid-enderecos { 
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
       gap: 15px; 
     }
     .card-endereco { 
       background: white; border-radius: 8px; overflow: hidden; 
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid #eee;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid #eee; display: flex; flex-direction: column;
     }
-    .card-header { background: #f8f9fa; padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; font-weight: bold; text-align: center; }
-    .card-body { padding: 10px; min-height: 40px; font-size: 12px; }
+    .card-header { background: #f8f9fa; padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; font-weight: bold; text-align: center; }
+    .card-body { padding: 10px; flex: 1; font-size: 12px; }
+    .card-footer { background: #eee; padding: 4px 8px; font-size: 10px; text-align: right; font-weight: bold; }
+
+    /* Botões e Inputs */
+    .btn { cursor: pointer; border: none; border-radius: 4px; padding: 8px 12px; font-weight: bold; }
+    input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
 
     /* Modal */
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; }
-    
-    .btn { cursor: pointer; border: none; border-radius: 4px; padding: 8px 15px; font-weight: bold; transition: 0.2s; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-success { background: var(--success); color: white; }
-    
-    input, select { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%; box-sizing: border-box; }
-    .badge-info { font-size: 10px; color: #666; display: block; margin-top: 2px; }
+    .modal-content { background: white; padding: 25px; border-radius: 12px; width: 350px; }
   </style>
 </head>
 <body>
@@ -76,9 +73,7 @@
       <span style="color:white; font-weight:bold;">ESTOQUE SIMONETTI</span>
     </div>
     <div style="display:flex; gap:15px; align-items:center;">
-      <button onclick="window.abrirNovoEndereco()" class="btn btn-success" id="btnNovoEnd" style="display:none;">
-        <i class="fas fa-plus-circle"></i> NOVO ENDEREÇO
-      </button>
+      <button id="btnNovoEnd" onclick="window.abrirNovoEndereco()" class="btn" style="background:var(--success); color:white; display:none;">+ NOVO ENDEREÇO</button>
       <div id="userDisplay" class="user-badge">...</div>
       <button onclick="window.logout()" style="background:none; border:none; color:white; cursor:pointer;"><i class="fas fa-sign-out-alt"></i></button>
     </div>
@@ -87,21 +82,21 @@
   <div class="main-layout">
     <div class="sidebar">
       <div class="sidebar-header">
-        <span><i class="fas fa-boxes"></i> FALTA GUARDAR</span>
-        <span id="countPendentes" class="badge-qtd" style="background:white; color:var(--primary); padding:2px 8px; border-radius:10px; font-size:12px;">0</span>
+        <span><i class="fas fa-clock"></i> FALTA GUARDAR</span>
+        <span id="countPendentes">0</span>
       </div>
       <div id="listaPendentes" class="scroll-area"></div>
     </div>
 
     <div class="content">
-      <div class="glass-panel">
-        <div class="search-row">
-          <input type="text" id="filtroSKU" placeholder="SKU/Cód. Volume" onkeyup="window.filtrarEstoque()" style="width:130px;">
-          <select id="filtroForn" onchange="window.filtrarEstoque()" style="width:200px;"></select>
-          <input type="text" id="filtroDesc" placeholder="Descrição do Produto..." onkeyup="window.filtrarEstoque()" style="flex:1;">
-          <button onclick="window.limparFiltros()" class="btn" style="background:#ccc;"><i class="fas fa-sync"></i></button>
-          <div id="countDisplay" style="font-weight:bold; color:var(--primary); font-size:18px; padding: 0 10px;">0</div>
-        </div>
+      <div class="glass-panel" style="display:flex; gap:10px; align-items:center;">
+          <input type="text" id="filtroCod" placeholder="Cód. Prod/Volume" onkeyup="window.filtrarEstoque()" style="width:130px;">
+          <select id="filtroForn" onchange="window.filtrarEstoque()" style="flex:1;">
+              <option value="">Todos os Fornecedores</option>
+          </select>
+          <input type="text" id="filtroDesc" placeholder="Descrição do Produto..." onkeyup="window.filtrarEstoque()" style="flex:2;">
+          <button onclick="window.limparFiltros()" class="btn" style="background:#6c757d; color:white;"><i class="fas fa-eraser"></i></button>
+          <div id="countDisplay" style="background:var(--primary); color:white; padding:8px 15px; border-radius:5px; font-weight:bold;">0</div>
       </div>
 
       <div id="gridEnderecos" class="grid-enderecos"></div>
@@ -110,12 +105,11 @@
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top:0;">Título</h3>
-      <hr>
+      <h3 id="modalTitle" style="margin-top:0;">Ação</h3>
       <div id="modalBody"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-        <button onclick="window.fecharModal()" class="btn" style="background:#eee;">Voltar</button>
-        <button id="btnConfirmar" class="btn btn-primary">Confirmar</button>
+        <button onclick="window.fecharModal()" class="btn">Voltar</button>
+        <button id="btnConfirmar" class="btn" style="background:var(--primary); color:white;">Confirmar</button>
       </div>
     </div>
   </div>
