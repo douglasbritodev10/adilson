@@ -7,7 +7,7 @@
   <style>
     :root {
       --primary: #004a99; --glass: rgba(255, 255, 255, 0.88);
-      --danger: #ff4d4d; --success: #00c853; --warning: #ffab00; --info: #17a2b8;
+      --danger: #ff4d4d; --success: #00c853; --warning: #ffab00;
     }
     
     body { 
@@ -16,164 +16,142 @@
       height: 100vh; overflow: hidden; color: #333;
     }
 
-    /* Layout Principal */
+    /* Barra Superior Corrigida */
     .top-nav { 
       background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(15px);
       padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
       border-bottom: 1px solid rgba(255,255,255,0.1);
+      height: 50px;
     }
-    
-    .main-container { display: flex; height: calc(100vh - 60px); padding: 15px; gap: 15px; }
 
-    /* Painel Lateral (Pendentes) */
+    .nav-left { display: flex; align-items: center; gap: 20px; }
+    
+    /* Botão Voltar */
+    .btn-back {
+      color: white; font-size: 20px; text-decoration: none;
+      background: rgba(255,255,255,0.1); width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; transition: 0.3s;
+    }
+    .btn-back:hover { background: rgba(255,255,255,0.3); }
+
+    .nav-right { display: flex; align-items: center; gap: 20px; }
+
+    /* Info Usuário */
+    .user-info { color: white; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+    .user-info i { font-size: 18px; color: var(--warning); }
+
+    /* Botão Sair */
+    .btn-logout {
+      background: var(--danger); color: white; border: none;
+      padding: 8px 15px; border-radius: 6px; cursor: pointer;
+      font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 5px;
+    }
+
+    /* Layout do Conteúdo */
+    .main-container { display: flex; height: calc(100vh - 70px); padding: 15px; gap: 15px; }
     .sidebar { width: 320px; display: flex; flex-direction: column; gap: 10px; }
+    .content-area { flex-grow: 1; display: flex; flex-direction: column; gap: 10px; }
+
     .glass-panel { 
       background: var(--glass); backdrop-filter: blur(10px);
       border-radius: 12px; padding: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-      border: 1px solid rgba(255,255,255,0.2);
     }
 
-    .list-pendentes { overflow-y: auto; flex-grow: 1; margin-top: 10px; }
-
-    /* Estilo dos Cards Detalhados no Endereço */
+    /* Cards e Grid */
     .grid-enderecos { 
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
-      gap: 15px; overflow-y: auto; padding-right: 5px; flex: 1;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+      gap: 15px; overflow-y: auto; padding-bottom: 50px;
     }
 
-    .card-endereco { 
-      background: var(--glass); border-radius: 12px; display: flex; flex-direction: column;
-      max-height: 450px; border: 1px solid rgba(255,255,255,0.4);
-    }
-
+    .card-endereco { background: var(--glass); border-radius: 12px; display: flex; flex-direction: column; }
     .card-end-header { 
-      background: #eef2f7; padding: 10px 15px; border-radius: 12px 12px 0 0;
-      font-weight: bold; color: var(--primary); display: flex; justify-content: space-between; align-items: center;
+      background: #eef2f7; padding: 10px; border-radius: 12px 12px 0 0;
+      font-weight: bold; color: var(--primary); display: flex; justify-content: space-between;
     }
 
-    /* Badge do Total no Endereço */
-    .total-badge {
-        background: var(--warning); color: #000; padding: 2px 10px;
-        border-radius: 20px; font-size: 11px; font-weight: 800; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+    /* Badge Totalizadora */
+    .total-badge { background: var(--warning); color: #000; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
 
-    .card-end-body { padding: 10px; overflow-y: auto; flex: 1; }
-
-    /* Box de cada Volume dentro do Endereço */
+    /* Estilo do Item Interno (Volume) */
     .vol-item-box {
-        background: #fff; border: 1px solid #ddd; border-radius: 8px;
-        padding: 10px; margin-bottom: 10px; border-left: 5px solid var(--primary);
-        transition: transform 0.2s;
+      background: white; border: 1px solid #ddd; margin: 8px; padding: 10px; border-radius: 8px;
+      border-left: 5px solid var(--primary);
     }
-    .vol-item-box:hover { transform: translateX(5px); }
+    .prod-title { font-weight: 800; font-size: 12px; margin-bottom: 4px; display: block; }
+    .vol-info { font-size: 11px; color: #555; background: #f4f4f4; padding: 5px; border-radius: 4px; }
 
-    .forn-tag { font-size: 10px; text-transform: uppercase; color: #666; font-weight: bold; margin-bottom: 4px; }
-    .prod-main { font-size: 12px; font-weight: 800; color: #222; margin-bottom: 4px; }
-    .prod-main small { color: var(--primary); background: #eef2f7; padding: 1px 4px; border-radius: 3px; }
+    /* Modal */
+    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; justify-content:center; align-items:center; z-index:100; }
+    .modal-content { background:white; padding:25px; border-radius:15px; width:360px; }
 
-    .vol-detail { 
-        font-size: 11px; background: #f8f9fa; padding: 6px; 
-        border-radius: 5px; margin: 6px 0; color: #444; line-height: 1.4;
-    }
-
-    .qtd-row { 
-        display: flex; justify-content: space-between; align-items: center; 
-        margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee;
-    }
-    .qtd-label { font-size: 13px; font-weight: bold; }
-    .qtd-number { color: var(--success); font-size: 15px; }
-
-    /* Botões Pequenos */
-    .btn-group { display: flex; gap: 5px; }
-    .btn-sm { padding: 5px 10px; font-size: 10px; border-radius: 4px; border: none; cursor: pointer; color: white; font-weight: bold; }
-    .btn-sm.mover { background: var(--primary); }
-    .btn-sm.saida { background: var(--danger); }
-
-    /* Modal e Forms */
-    .modal { 
-      position: fixed; top:0; left:0; width:100%; height:100%; 
-      background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index: 1000;
-    }
-    .modal-content { background: white; padding: 25px; border-radius: 15px; width: 350px; }
-    
-    .input-modal { 
-      width: 100%; padding: 10px; margin: 8px 0 15px 0; 
-      border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; 
-    }
-
-    .info-mov-box { 
-      background: #eef2f7; padding: 12px; border-radius: 8px; 
-      margin-bottom: 15px; font-size: 13px; border-left: 4px solid var(--warning);
-    }
-
-    /* Utilitários */
-    .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; transition: 0.3s; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn:hover { opacity: 0.8; transform: translateY(-1px); }
-    
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
   </style>
 </head>
 <body>
 
   <div class="top-nav">
-    <div style="display:flex; align-items:center; gap:15px;">
-        <img src="https://www.moveissimonetti.com.br/favicon.ico" width="24">
-        <h3 style="margin:0; font-size:16px; letter-spacing:1px; color:white;">LOGÍSTICA SIMONETTI</h3>
+    <div class="nav-left">
+      <a href="dashboard.html" class="btn-back" title="Voltar ao Menu">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <h3 style="margin:0; color:white; font-size:16px;">GESTÃO DE ESTOQUE</h3>
     </div>
-    <div style="display:flex; gap:15px; align-items:center;">
-        <span id="userDisplay" style="color:white; font-size:13px;"><i class="fas fa-user-circle"></i> Carregando...</span>
-        <button onclick="window.logout()" class="btn" style="background:var(--danger); color:white; padding:5px 12px; font-size:12px;">SAIR</button>
+
+    <div class="nav-right">
+      <div id="userDisplay" class="user-info">
+        <i class="fas fa-user-circle"></i> <span>Carregando...</span>
+      </div>
+      <button onclick="window.logout()" class="btn-logout">
+        <i class="fas fa-sign-out-alt"></i> SAIR
+      </button>
     </div>
   </div>
 
   <div class="main-container">
     
     <div class="sidebar">
-      <div class="glass-panel" style="background:var(--primary); color:white;">
-          <h4 style="margin:0; font-size:13px;"><i class="fas fa-plus-circle"></i> NOVO ENDEREÇO</h4>
-          <div style="display:flex; gap:5px; margin-top:10px;">
-              <input type="text" id="addRua" placeholder="RUA" style="width:50px; padding:5px; border-radius:4px; border:none;">
-              <input type="text" id="addModulo" placeholder="MOD" style="width:50px; padding:5px; border-radius:4px; border:none;">
-              <button onclick="window.criarEndereco()" class="btn" style="background:var(--success); color:white; padding:5px 10px; font-size:11px;">OK</button>
-          </div>
+      <div class="glass-panel" style="background:var(--primary); color:white; padding: 10px;">
+        <p style="margin:0 0 5px 0; font-size:11px; font-weight:bold;">NOVO ENDEREÇO:</p>
+        <div style="display:flex; gap:5px;">
+          <input type="text" id="addRua" placeholder="RUA" style="width:60px; border:none; border-radius:4px; padding:5px;">
+          <input type="text" id="addModulo" placeholder="MOD" style="width:60px; border:none; border-radius:4px; padding:5px;">
+          <button onclick="window.criarEndereco()" style="background:var(--success); color:white; border:none; border-radius:4px; cursor:pointer; padding:0 10px;">OK</button>
+        </div>
       </div>
 
-      <div class="glass-panel" style="flex-grow:1; display:flex; flex-direction:column;">
-        <div style="font-weight:bold; color:var(--primary); border-bottom:1px solid #ddd; padding-bottom:8px; font-size:13px;">
-            <i class="fas fa-boxes"></i> AGUARDANDO ARMAZENAGEM
-        </div>
-        <div id="pendentesArea" class="list-pendentes"></div>
+      <div class="glass-panel" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+        <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--primary);"><i class="fas fa-clock"></i> PENDENTES</h4>
+        <div id="pendentesArea" style="overflow-y:auto; flex:1;"></div>
       </div>
     </div>
 
-    <div style="flex-grow:1; display:flex; flex-direction:column; gap:15px;">
-      <div class="glass-panel" style="display:flex; gap:10px; align-items:center;">
-          <input type="text" id="filtroCod" placeholder="Cód. Prod" onkeyup="window.filtrarEstoque()" style="width:110px; padding:8px; border-radius:5px; border:1px solid #ddd;">
-          <select id="filtroForn" onchange="window.filtrarEstoque()" style="flex:1; padding:8px; border-radius:5px; border:1px solid #ddd;">
-              <option value="">Todos os Fornecedores</option>
-          </select>
-          <input type="text" id="filtroDesc" placeholder="Produto ou Volume..." onkeyup="window.filtrarEstoque()" style="flex:2; padding:8px; border-radius:5px; border:1px solid #ddd;">
-          <button onclick="window.limparFiltros()" class="btn" style="background:#6c757d; color:white; padding:8px;"><i class="fas fa-eraser"></i></button>
-          <div id="countDisplay" style="background:var(--primary); color:white; padding:8px 15px; border-radius:5px; font-weight:bold;">0</div>
+    <div class="content-area">
+      <div class="glass-panel" style="display:flex; gap:10px;">
+        <input type="text" id="filtroCod" placeholder="Cód. Prod" onkeyup="window.filtrarEstoque()" style="width:100px; padding:8px; border-radius:5px; border:1px solid #ddd;">
+        <select id="filtroForn" onchange="window.filtrarEstoque()" style="flex:1; padding:8px; border-radius:5px; border:1px solid #ddd;"></select>
+        <input type="text" id="filtroDesc" placeholder="Pesquisar volume ou descrição..." onkeyup="window.filtrarEstoque()" style="flex:2; padding:8px; border-radius:5px; border:1px solid #ddd;">
+        <div id="countDisplay" style="background:var(--primary); color:white; padding:8px 15px; border-radius:5px; font-weight:bold;">0</div>
       </div>
 
       <div id="gridEnderecos" class="grid-enderecos"></div>
     </div>
+
   </div>
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top:0; color:var(--primary); font-size:16px;">Ação</h3>
+      <h3 id="modalTitle" style="margin-top:0; color:var(--primary);">Ação</h3>
       <div id="modalBody"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-        <button onclick="window.fecharModal()" class="btn" style="background:#eee;">Cancelar</button>
-        <button id="btnConfirmarModal" class="btn btn-primary">Confirmar</button>
+        <button onclick="window.fecharModal()" style="background:#eee; border:none; padding:10px 15px; border-radius:6px; cursor:pointer;">Cancelar</button>
+        <button id="btnConfirmarModal" style="background:var(--primary); color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer;">Confirmar</button>
       </div>
     </div>
   </div>
 
   <script type="module" src="estoque.js"></script>
+
 </body>
 </html>
