@@ -149,13 +149,13 @@ window.abrirAcao = (volId, tipo) => {
             Item: <b>${vol.descricao}</b><br>Saldo Atual: <b>${vol.quantidade}</b>
         </div>
         <label>QUANTIDADE:</label>
-        <input type="number" id="qtdAcao" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; margin-bottom:15px; padding:8px; border:1px solid #ddd; border-radius:4px;">
+        <input type="number" id="qtdAcao" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; margin-bottom:15px;">
     `;
 
     if (tipo === 'guardar' || tipo === 'mover') {
         title.innerText = tipo === 'guardar' ? "Endereçar Volume" : "Mover Volume";
         let opts = dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}</option>`).join('');
-        body.innerHTML += `<label>ENDEREÇO DESTINO:</label><select id="selDestino" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">${opts}</select>`;
+        body.innerHTML += `<label>ENDEREÇO DESTINO:</label><select id="selDestino" style="width:100%;">${opts}</select>`;
     } else {
         title.innerText = "Dar Saída";
     }
@@ -178,7 +178,7 @@ window.abrirAcao = (volId, tipo) => {
                 const endDestino = dbState.enderecos.find(e => e.id === destinoId);
                 const localizacao = `R${endDestino.rua}-M${endDestino.modulo}-N${endDestino.nivel}`;
 
-                // LÓGICA DE UNIFICAÇÃO (MERGE)
+                // --- LÓGICA DE UNIFICAÇÃO (SOMA SE JÁ EXISTIR) ---
                 const volExistente = dbState.volumes.find(v => 
                     v.enderecoId === destinoId && 
                     v.produtoId === vol.produtoId && 
@@ -219,12 +219,41 @@ window.abrirAcao = (volId, tipo) => {
     };
 };
 
+// --- FUNÇÃO CORRIGIDA PARA O BOTÃO NOVO ENDEREÇO ---
+window.abrirNovoEndereco = () => {
+    if(userRole !== 'admin') return;
+    const modal = document.getElementById("modalMaster");
+    const title = document.getElementById("modalTitle");
+    const body = document.getElementById("modalBody");
+
+    title.innerText = "Cadastrar Novo Endereço";
+    body.innerHTML = `
+        <label>RUA:</label><input type="text" id="addRua" style="width:100%; margin-bottom:10px;">
+        <label>MÓDULO:</label><input type="number" id="addMod" style="width:100%; margin-bottom:10px;">
+        <label>NÍVEL:</label><input type="number" id="addNiv" value="1" style="width:100%;">
+    `;
+    modal.style.display = "flex";
+
+    document.getElementById("btnConfirmar").onclick = async () => {
+        const rua = document.getElementById("addRua").value.trim().toUpperCase();
+        const mod = document.getElementById("addMod").value.trim();
+        const niv = document.getElementById("addNiv").value.trim();
+        if(!rua || !mod) return alert("Preencha Rua e Módulo!");
+        
+        const existe = dbState.enderecos.find(e => e.rua === rua && e.modulo === mod && e.nivel === niv);
+        if(existe) return alert("Endereço já cadastrado!");
+
+        await addDoc(collection(db, "enderecos"), { rua, modulo: mod, nivel: niv });
+        window.fecharModal(); loadAll();
+    };
+};
+
 window.deletarEndereco = async (id) => {
     if(userRole !== 'admin') return;
     if(confirm("Excluir endereço? Os itens voltarão para PENDENTES.")){
         try {
             const afetados = dbState.volumes.filter(v => v.enderecoId === id);
-            for(let v of afetados) { await updateDoc(doc(db, "volumes", v.id), { enderecoId: "" }); }
+            for(let v of afetados) { await updateDoc(doc(db, \"volumes\", v.id), { enderecoId: "" }); }
             await deleteDoc(doc(db, "enderecos", id));
             loadAll();
         } catch(e) { alert("Erro ao excluir."); }
@@ -237,6 +266,25 @@ window.filtrarEstoque = () => {
     const fDesc = document.getElementById("filtroDesc")?.value.toLowerCase() || "";
     let c = 0;
 
+    document.querySelectorAll(".card-endereco").forEach(card => {
+        const busca = card.dataset.busca || "";
+        const match = busca.includes(fCod) && busca.includes(fDesc) && (fForn === "" || busca.includes(fForn));
+        card.style.display = match ? "flex" : "none";
+        if(match) c++;
+    });
+    const countDisp = document.getElementById("countDisplay");
+    if(countDisp) countDisp.innerText = c;
+};
+
+window.limparFiltros = () => {
+    document.getElementById("filtroCod").value = "";
+    document.getElementById("filtroForn").value = "";
+    document.getElementById("filtroDesc").value = "";
+    window.filtrarEstoque();
+};
+
+window.fecharModal = () => { document.getElementById("modalMaster").style.display = "none"; };
+window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
     document.querySelectorAll(".card-endereco").forEach(card => {
         const busca = card.dataset.busca || "";
         const match = busca.includes(fCod) && busca.includes(fDesc) && (fForn === "" || busca.includes(fForn));
