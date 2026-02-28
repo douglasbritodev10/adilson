@@ -9,6 +9,7 @@ let fornecedoresCache = {};
 let userRole = "leitor";
 let usernameDB = "Usuário";
 
+// --- CONTROLO DE ACESSO E LOGIN ---
 onAuthStateChanged(auth, async user => {
     if (user) {
         const userRef = doc(db, "users", user.uid);
@@ -28,29 +29,23 @@ onAuthStateChanged(auth, async user => {
 
 async function init() {
     const fSnap = await getDocs(query(collection(db, "fornecedores"), orderBy("nome", "asc")));
-    const selCadastro = document.getElementById("selForn");
     const selFiltro = document.getElementById("filtroForn");
+    const selCadastro = document.getElementById("selForn");
     
-    if(selCadastro) selCadastro.innerHTML = '<option value="">Selecione...</option>';
     if(selFiltro) selFiltro.innerHTML = '<option value="">Todos os Fornecedores</option>';
-
     fSnap.forEach(d => {
         const nome = d.data().nome;
         fornecedoresCache[d.id] = nome;
-        if(selCadastro) selCadastro.innerHTML += `<option value="${d.id}">${nome}</option>`;
         if(selFiltro) selFiltro.innerHTML += `<option value="${nome}">${nome}</option>`;
+        if(selCadastro) selCadastro.innerHTML += `<option value="${d.id}">${nome}</option>`;
     });
 
-    // Recuperar filtros do localStorage
+    // Recuperar filtros guardados para não perder ao dar refresh
     document.getElementById("filtroCod").value = localStorage.getItem('f_prod_cod') || "";
     document.getElementById("filtroDesc").value = localStorage.getItem('f_prod_desc') || "";
-    const fornSalvo = localStorage.getItem('f_prod_forn') || "";
+    document.getElementById("filtroForn").value = localStorage.getItem('f_prod_forn') || "";
     
-    // Aguardar carregar o select para aplicar o valor salvo
-    setTimeout(() => {
-        document.getElementById("filtroForn").value = fornSalvo;
-        refresh();
-    }, 100);
+    refresh();
 }
 
 async function refresh() {
@@ -66,19 +61,28 @@ async function refresh() {
         const pId = d.id;
         const p = d.data();
         const fNome = fornecedoresCache[p.fornecedorId] || "---";
-        
-        // --- LOGICA DE UNIFICAÇÃO (AGRUPAMENTO) ---
         const prodVols = volumesRaw.filter(v => v.produtoId === pId);
+        
+        // Unificação de volumes iguais para exibição
+        const agrupados = {};
+        prodVols.forEach(v => {
+            const chave = `${v.codigo}-${v.descricao}`;
+            if(!agrupados[chave]) agrupados[chave] = { ...v, idsOriginais: [v.id], qtdTotal: 0 };
+            agrupados[chave].qtdTotal += (parseInt(v.quantidade) || 0);
+        });
+
         const totalGeral = prodVols.reduce((acc, curr) => acc + (parseInt(curr.quantidade) || 0), 0);
 
         const row = document.createElement("tr");
         row.className = "prod-row";
-        row.dataset.busca = `${p.codigo} ${fNome} ${p.nome}`.toLowerCase();
+        // Dataset de busca inclui códigos de volumes para busca global
+        const codVols = prodVols.map(v => v.codigo).join(" ");
+        row.dataset.busca = `${p.codigo} ${fNome} ${p.nome} ${codVols}`.toLowerCase();
         
         row.innerHTML = `
             <td style="text-align:center;"><button class="btn" style="padding:2px 8px;" onclick="toggleVols('${pId}')">+</button></td>
             <td style="font-weight:bold; color:var(--primary)">${fNome}</td>
-            <td>${p.nome} <br><small style="color:#888">Cód Base: ${p.codigo || '---'}</small></td>
+            <td>${p.nome}</td>
             <td style="text-align:center;"><span class="badge-qtd">${totalGeral}</span></td>
             <td style="text-align:right;">
                 ${userRole === 'admin' ? `
@@ -89,32 +93,23 @@ async function refresh() {
         `;
         tbody.appendChild(row);
 
-        // Agrupando linhas de volumes para exibição unificada
-        // Criamos um mapa para agrupar volumes idênticos
-        const agrupados = {};
-        prodVols.forEach(v => {
-            const chave = `${v.codigo}-${v.descricao}`;
-            if(!agrupados[chave]) {
-                agrupados[chave] = { ...v, idsOriginais: [v.id], qtdTotal: 0 };
-            }
-            agrupados[chave].qtdTotal += (parseInt(v.quantidade) || 0);
-        });
-
         Object.values(agrupados).forEach(v => {
             const vRow = document.createElement("tr");
             vRow.className = `vol-row child-${pId}`;
+            vRow.dataset.buscaVolume = `${v.codigo} ${v.descricao}`.toLowerCase();
             vRow.innerHTML = `
                 <td></td>
                 <td colspan="2" style="padding-left:40px;">
-                    <i class="fas fa-level-up-alt fa-rotate-90" style="color:#ccc"></i> 
+                    <i class="fas fa-box" style="color:#aaa; margin-right:5px;"></i> 
                     <b>${v.codigo || 'S/C'}</b> - ${v.descricao}
                 </td>
                 <td style="text-align:center; font-weight:bold;">${v.qtdTotal}</td>
-                <td style="text-align:right; display:flex; justify-content:flex-end; gap:5px;">
-                    <button class="btn" style="background:var(--primary); color:white;" onclick="movimentar('${v.idsOriginais[0]}', 1, 'Entrada', '${v.descricao}')" title="Entrada">+1</button>
-                    <button class="btn" style="background:var(--warning); color:white;" onclick="movimentar('${v.idsOriginais[0]}', -1, 'Saída', '${v.descricao}')" title="Saída">-1</button>
+                <td style="text-align:right;">
+                    <button class="btn" style="background:var(--success); color:white;" onclick="window.abrirModalMovimento('${v.idsOriginais[0]}', 'Entrada', '${v.descricao}')"><i class="fas fa-plus"></i></button>
+                    <button class="btn" style="background:var(--warning); color:white;" onclick="window.abrirModalMovimento('${v.idsOriginais[0]}', 'Saída', '${v.descricao}')"><i class="fas fa-minus"></i></button>
                     ${userRole === 'admin' ? `
                         <button class="btn" style="background:var(--gray); color:white;" onclick="window.abrirModalVolume('${pId}', '${p.nome}', '${v.idsOriginais[0]}')"><i class="fas fa-edit"></i></button>
+                        <button class="btn" style="background:none; color:var(--danger);" onclick="deletar('${v.idsOriginais[0]}', 'volumes', '${v.descricao}')"><i class="fas fa-trash"></i></button>
                     ` : ''}
                 </td>
             `;
@@ -124,116 +119,128 @@ async function refresh() {
     filtrar();
 }
 
-// --- MOVIMENTAÇÃO (Entrada e Saída) ---
-window.movimentar = async (volId, qtd, tipo, desc) => {
-    // Se for entrada, o volume perde o endereço para cair nos "Pendentes" do estoque
-    const updateData = {
-        quantidade: increment(qtd),
-        ultimaMovimentacao: serverTimestamp()
+// --- MODAL DE MOVIMENTAÇÃO (ENTRADA/SAÍDA COM QTD) ---
+window.abrirModalMovimento = (volId, tipo, desc) => {
+    const modal = document.getElementById("modalMaster");
+    document.getElementById("modalTitle").innerText = `${tipo}: ${desc}`;
+    document.getElementById("modalBody").innerHTML = `
+        <label style="font-size:11px; font-weight:bold;">QUANTIDADE PARA ${tipo.toUpperCase()}:</label>
+        <input type="number" id="movQtd" style="width:100%; font-size:20px; text-align:center; margin-top:10px;" value="1" min="1">
+    `;
+    modal.style.display = "flex";
+
+    document.getElementById("btnConfirmarVol").onclick = async () => {
+        const qtd = parseInt(document.getElementById("movQtd").value);
+        if(!qtd || qtd <= 0) return alert("Insira uma quantidade válida!");
+
+        const valorFinal = tipo === 'Entrada' ? qtd : -qtd;
+        const updateData = { quantidade: increment(valorFinal), ultimaMovimentacao: serverTimestamp() };
+        
+        // Se for entrada, limpa o endereço para cair no "Aguardando Endereçamento" no estoque
+        if (tipo === 'Entrada') updateData.enderecoId = ""; 
+
+        await updateDoc(doc(db, "volumes", volId), updateData);
+        await addDoc(collection(db, "movimentacoes"), {
+            tipo, quantidade: qtd, produto: desc, usuario: usernameDB, data: serverTimestamp()
+        });
+
+        fecharModal();
+        refresh();
     };
-    
-    if (tipo === 'Entrada') {
-        updateData.enderecoId = ""; // Fica aguardando endereçamento
-    }
-
-    await updateDoc(doc(db, "volumes", volId), updateData);
-    
-    // Registrar no histórico
-    await addDoc(collection(db, "movimentacoes"), {
-        tipo: tipo,
-        quantidade: Math.abs(qtd),
-        produto: desc,
-        usuario: usernameDB,
-        data: serverTimestamp()
-    });
-
-    refresh();
 };
 
-// --- MODAL PARA CADASTRO E EDIÇÃO ---
+// --- MODAL DE CADASTRO / EDIÇÃO DE VOLUME ---
 window.abrirModalVolume = async (pId, pNome, volId = null) => {
     const modal = document.getElementById("modalMaster");
-    const inputCod = document.getElementById("volCod");
-    const inputDesc = document.getElementById("volDesc");
-    
     document.getElementById("modalTitle").innerText = volId ? `Editar Volume: ${pNome}` : `Novo Volume: ${pNome}`;
     
+    let vCod = "", vDesc = "";
     if (volId) {
         const vSnap = await getDoc(doc(db, "volumes", volId));
-        const vData = vSnap.data();
-        inputCod.value = vData.codigo || "";
-        inputDesc.value = vData.descricao || "";
-    } else {
-        inputCod.value = "";
-        inputDesc.value = "";
+        vCod = vSnap.data().codigo || "";
+        vDesc = vSnap.data().descricao || "";
     }
 
+    document.getElementById("modalBody").innerHTML = `
+        <label style="font-size:11px; font-weight:bold;">CÓDIGO (SKU/EAN):</label>
+        <input type="text" id="volCod" style="width:100%; margin-bottom:15px;" value="${vCod}">
+        <label style="font-size:11px; font-weight:bold;">DESCRIÇÃO:</label>
+        <input type="text" id="volDesc" style="width:100%;" value="${vDesc}">
+    `;
     modal.style.display = "flex";
-    
+
     document.getElementById("btnConfirmarVol").onclick = async () => {
         const dados = {
-            codigo: inputCod.value.trim(),
-            descricao: inputDesc.value.trim(),
+            codigo: document.getElementById("volCod").value.trim(),
+            descricao: document.getElementById("volDesc").value.trim(),
             ultimaMovimentacao: serverTimestamp()
         };
 
         if (volId) {
             await updateDoc(doc(db, "volumes", volId), dados);
         } else {
-            await addDoc(collection(db, "volumes"), {
-                ...dados,
-                produtoId: pId,
-                quantidade: 0,
-                enderecoId: ""
-            });
+            await addDoc(collection(db, "volumes"), { ...dados, produtoId: pId, quantidade: 0, enderecoId: "" });
         }
         fecharModal();
         refresh();
     };
 };
 
-window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
-
+// --- FILTRO INTELIGENTE (PRODUTO + VOLUME) ---
 window.filtrar = () => {
     const fCod = document.getElementById("filtroCod").value.toLowerCase();
-    const fForn = document.getElementById("filtroForn").value;
+    const fForn = document.getElementById("filtroForn").value.toLowerCase();
     const fDesc = document.getElementById("filtroDesc").value.toLowerCase();
 
-    // Salvar filtros
     localStorage.setItem('f_prod_cod', fCod);
     localStorage.setItem('f_prod_desc', fDesc);
     localStorage.setItem('f_prod_forn', fForn);
 
     document.querySelectorAll(".prod-row").forEach(row => {
-        const texto = row.dataset.busca;
-        const matches = texto.includes(fCod) && (fForn === "" || texto.includes(fForn.toLowerCase())) && texto.includes(fDesc);
-        row.style.display = matches ? "table-row" : "none";
+        const textoProd = row.dataset.busca;
+        const matchesForn = fForn === "" || textoProd.includes(fForn);
         
-        // Esconder os volumes se o produto estiver escondido
+        let matchVolume = false;
         const pId = row.querySelector('button').onclick.toString().match(/'(.*?)'/)[1];
+        
         document.querySelectorAll(`.child-${pId}`).forEach(vRow => {
-            vRow.style.display = matches && vRow.classList.contains('active') ? "table-row" : "none";
+            const textoVol = vRow.dataset.buscaVolume;
+            const match = (fCod === "" || textoVol.includes(fCod)) && (fDesc === "" || textoVol.includes(fDesc));
+            if(match) matchVolume = true;
+        });
+
+        const exibir = matchesForn && (textoProd.includes(fCod) && textoProd.includes(fDesc) || matchVolume);
+        row.style.display = exibir ? "table-row" : "none";
+
+        document.querySelectorAll(`.child-${pId}`).forEach(vRow => {
+            vRow.style.display = (exibir && vRow.classList.contains('active')) ? "table-row" : "none";
         });
     });
 };
 
-window.limparFiltros = () => {
-    localStorage.removeItem('f_prod_cod');
-    localStorage.removeItem('f_prod_desc');
-    localStorage.removeItem('f_prod_forn');
-    location.reload();
+window.fecharModal = () => {
+    document.getElementById("modalMaster").style.display = "none";
+    document.getElementById("modalBody").innerHTML = "";
 };
 
 window.toggleVols = (pId) => {
     document.querySelectorAll(`.child-${pId}`).forEach(el => el.classList.toggle('active'));
-    filtrar(); // Re-aplica visibilidade
+    filtrar();
 };
 
-window.deletar = async (id, tabela, descricao) => {
-    if(confirm(`Excluir "${descricao}"?`)){
+window.deletar = async (id, tabela, desc) => {
+    if(userRole !== 'admin') return;
+    if(confirm(`Eliminar "${desc}"?`)){
         await deleteDoc(doc(db, tabela, id));
         refresh();
     }
+};
+
+window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
+
+window.limparFiltros = () => {
+    localStorage.clear();
+    location.reload();
 };
 
 document.getElementById("btnSaveProd").onclick = async () => {
@@ -246,5 +253,3 @@ document.getElementById("btnSaveProd").onclick = async () => {
     document.getElementById("newCod").value = "";
     refresh();
 };
-
-window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
