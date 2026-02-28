@@ -162,7 +162,7 @@ window.abrirModalVolume = async (pId, pNome, volId = null) => {
     }
 
     document.getElementById("modalBody").innerHTML = `
-        <label style="font-size:11px; font-weight:bold;">CÓDIGO (SKU/EAN):</label>
+        <label style="font-size:11px; font-weight:bold;">CÓDIGO (SKU):</label>
         <input type="text" id="volCod" style="width:100%; margin-bottom:15px;" value="${vCod}">
         <label style="font-size:11px; font-weight:bold;">DESCRIÇÃO:</label>
         <input type="text" id="volDesc" style="width:100%;" value="${vDesc}">
