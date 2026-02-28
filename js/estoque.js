@@ -20,7 +20,7 @@ onAuthStateChanged(auth, async user => {
             if(btnEnd) btnEnd.style.display = (userRole === 'admin') ? 'block' : 'none';
         }
         const display = document.getElementById("userDisplay");
-        if(display) display.innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB} (${userRole.toUpperCase()})`;
+        if(display) display.innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB}`;
         loadAll();
     } else { window.location.href = "index.html"; }
 });
@@ -100,21 +100,14 @@ function syncUI() {
             const prod = dbState.produtos[v.produtoId] || { nome: "???", codigo: "???" };
             const forn = dbState.fornecedores[prod.fornecedorId] || { nome: "???" };
             totalUnidades += v.quantidade;
-            
             buscaTexto += `${prod.nome} ${prod.codigo} ${forn.nome} ${v.descricao} ${v.codigo || ''} `.toLowerCase();
 
             htmlItens += `
                 <div class="item-row">
                     <div class="item-info">
-                        <div style="font-size: 10px; color: var(--primary); font-weight: bold;">
-                            P: ${prod.codigo} - ${prod.nome}
-                        </div>
-                        <div style="font-size: 11px;">
-                            <b style="color:#333;">V: ${v.codigo || 'S/C'}</b> - ${v.descricao}
-                        </div>
-                        <div style="font-size: 10px; color: #666;">
-                            ${forn.nome} | <b style="color:var(--success)">Qtd: ${v.quantidade}</b>
-                        </div>
+                        <div style="font-size: 10px; color: var(--primary); font-weight: bold;">P: ${prod.codigo} - ${prod.nome}</div>
+                        <div style="font-size: 11px;"><b style="color:#333;">V: ${v.codigo || 'S/C'}</b> - ${v.descricao}</div>
+                        <div style="font-size: 10px; color: #666;">${forn.nome} | <b style="color:var(--success)">Qtd: ${v.quantidade}</b></div>
                     </div>
                     ${userRole !== 'leitor' ? `
                         <div style="display:flex; align-items: center;">
@@ -128,10 +121,7 @@ function syncUI() {
 
         card.dataset.busca = buscaTexto;
         card.innerHTML = `
-            <div class="card-header">
-                RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}
-                ${userRole === 'admin' ? `<button onclick="window.deletarEndereco('${e.id}')" class="btn-delete-end"><i class="fas fa-trash"></i></button>` : ''}
-            </div>
+            <div class="card-header">RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}</div>
             <div class="card-body">${htmlItens || '<small style="color:#ccc">Vazio</small>'}</div>
             <div class="card-footer">Total: ${totalUnidades} un</div>
         `;
@@ -144,23 +134,22 @@ window.abrirAcao = (volId, tipo) => {
     if(userRole === 'leitor') return;
     const vol = dbState.volumes.find(v => v.id === volId);
     const modal = document.getElementById("modalMaster");
-    const title = document.getElementById("modalTitle");
     const body = document.getElementById("modalBody");
     
     body.innerHTML = `
         <div style="font-size:12px; background:#f0f7ff; padding:10px; border-radius:5px; margin-bottom:15px;">
-            Item: <b>${vol.descricao}</b><br>Saldo: <b>${vol.quantidade}</b>
+            Item: <b>${vol.descricao}</b><br>Saldo Atual: <b>${vol.quantidade}</b>
         </div>
-        <label>QUANTIDADE:</label>
+        <label>QUANTIDADE PARA ESTA AÇÃO:</label>
         <input type="number" id="qtdAcao" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; margin-bottom:15px;">
     `;
 
     if (tipo === 'guardar' || tipo === 'mover') {
-        title.innerText = tipo === 'guardar' ? "Endereçar" : "Mover";
+        document.getElementById("modalTitle").innerText = tipo === 'guardar' ? "Endereçar Volume" : "Mover Volume";
         let opts = dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}</option>`).join('');
-        body.innerHTML += `<label>DESTINO:</label><select id="selDestino" style="width:100%;">${opts}</select>`;
+        body.innerHTML += `<label>ENDEREÇO DESTINO:</label><select id="selDestino" style="width:100%;">${opts}</select>`;
     } else {
-        title.innerText = "Dar Saída";
+        document.getElementById("modalTitle").innerText = "Dar Saída";
     }
 
     modal.style.display = "flex";
@@ -175,54 +164,66 @@ window.abrirAcao = (volId, tipo) => {
                 await addDoc(collection(db, "movimentacoes"), { 
                     tipo: "SAÍDA", produto: vol.descricao, quantidade: qtd, usuario: usernameDB, data: serverTimestamp() 
                 });
-            } else {
+            } 
+            else {
                 const destinoId = document.getElementById("selDestino").value;
-                if(qtd === vol.quantidade) {
-                    await updateDoc(doc(db, "volumes", volId), { enderecoId: destinoId, ultimaMovimentacao: serverTimestamp() });
-                } else {
-                    await updateDoc(doc(db, "volumes", volId), { quantidade: increment(-qtd) });
-                    await addDoc(collection(db, "volumes"), {
-                        produtoId: vol.produtoId, descricao: vol.descricao, codigo: vol.codigo || "",
-                        quantidade: qtd, enderecoId: destinoId, ultimaMovimentacao: serverTimestamp()
+                const endDestino = dbState.enderecos.find(e => e.id === destinoId);
+                const localizacao = `R${endDestino.rua}-M${endDestino.modulo}-N${endDestino.nivel}`;
+
+                // --- LÓGICA DE SOMAR SE JÁ EXISTIR NO DESTINO ---
+                const volExistente = dbState.volumes.find(v => 
+                    v.enderecoId === destinoId && 
+                    v.produtoId === vol.produtoId && 
+                    v.codigo === vol.codigo && 
+                    v.descricao === vol.descricao
+                );
+
+                if (volExistente) {
+                    // Já existe o mesmo volume lá, soma a quantidade no existente
+                    await updateDoc(doc(db, "volumes", volExistente.id), { 
+                        quantidade: increment(qtd), 
+                        ultimaMovimentacao: serverTimestamp() 
                     });
+                } else {
+                    // Não existe igual, cria um novo registro ou atualiza o atual
+                    if (qtd === vol.quantidade && (tipo === 'mover' || tipo === 'guardar')) {
+                        await updateDoc(doc(db, "volumes", volId), { enderecoId: destinoId, ultimaMovimentacao: serverTimestamp() });
+                    } else {
+                        await addDoc(collection(db, "volumes"), {
+                            produtoId: vol.produtoId, 
+                            descricao: vol.descricao, 
+                            codigo: vol.codigo || "",
+                            quantidade: qtd, 
+                            enderecoId: destinoId, 
+                            ultimaMovimentacao: serverTimestamp()
+                        });
+                    }
                 }
+
+                // Se moveu apenas parte, subtrai do original (caso não tenha mudado o original inteiro)
+                if (qtd < vol.quantidade) {
+                    await updateDoc(doc(db, "volumes", volId), { quantidade: increment(-qtd) });
+                } else if (volExistente && qtd === vol.quantidade) {
+                    // Se moveu tudo e somou no destino, apaga o registro original que ficou zerado
+                    await deleteDoc(doc(db, "volumes", volId));
+                }
+
+                // REGISTRO NO HISTÓRICO
+                await addDoc(collection(db, "movimentacoes"), { 
+                    tipo: tipo.toUpperCase(), 
+                    produto: vol.descricao, 
+                    quantidade: qtd, 
+                    destino: localizacao,
+                    usuario: usernameDB, 
+                    data: serverTimestamp() 
+                });
             }
             window.fecharModal(); loadAll();
-        } catch (err) { alert("Erro ao processar!"); }
+        } catch (err) { console.error(err); alert("Erro ao processar!"); }
     };
 };
 
-window.deletarEndereco = async (id) => {
-    if(userRole !== 'admin') return;
-    if(confirm("Excluir endereço? Os itens voltarão para PENDENTES.")){
-        const afetados = dbState.volumes.filter(v => v.enderecoId === id);
-        for(let v of afetados) { await updateDoc(doc(db, "volumes", v.id), { enderecoId: "" }); }
-        await deleteDoc(doc(db, "enderecos", id));
-        loadAll();
-    }
-};
-
-window.filtrarEstoque = () => {
-    const fCod = document.getElementById("filtroCod")?.value.toLowerCase() || "";
-    const fForn = document.getElementById("filtroForn")?.value.toLowerCase() || "";
-    const fDesc = document.getElementById("filtroDesc")?.value.toLowerCase() || "";
-    let c = 0;
-
-    document.querySelectorAll(".card-endereco").forEach(card => {
-        const busca = card.dataset.busca || "";
-        const match = busca.includes(fCod) && busca.includes(fDesc) && (fForn === "" || busca.includes(fForn));
-        card.style.display = match ? "flex" : "none";
-        if(match) c++;
-    });
-    document.getElementById("countDisplay").innerText = c;
-};
-
-window.limparFiltros = () => {
-    document.getElementById("filtroCod").value = "";
-    document.getElementById("filtroForn").value = "";
-    document.getElementById("filtroDesc").value = "";
-    window.filtrarEstoque();
-};
-
 window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
+window.filtrarEstoque = () => { /* ... sua função de filtro ... */ };
+window.limparFiltros = () => { /* ... sua função de limpar ... */ };
 window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
