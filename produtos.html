@@ -7,43 +7,35 @@
   <style>
     :root {
       --primary: #004a99; --glass: rgba(255, 255, 255, 0.9);
-      --danger: #ff4d4d; --success: #00c853; --gray: #6c757d;
+      --danger: #ff4d4d; --success: #00c853; --gray: #6c757d; --warning: #ffab00;
     }
     body { 
       background: linear-gradient(135deg, #001f3f 0%, #004a99 100%);
       background-attachment: fixed; margin: 0; font-family: 'Segoe UI', sans-serif; 
       color: #333; min-height: 100vh;
     }
-
-    /* Top Nav idêntica ao estoque */
     .top-nav { 
       background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(15px);
       padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
       border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; z-index: 100;
     }
     .user-badge { background: rgba(255,255,255,0.15); padding: 6px 15px; border-radius: 20px; color: white; font-weight: bold; font-size: 13px; border: 1px solid rgba(255,255,255,0.2); }
-
     .container { padding: 20px; max-width: 1200px; margin: auto; }
-
     .glass-panel { 
       background: var(--glass); backdrop-filter: blur(20px); border-radius: 15px; 
       border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.3);
       padding: 20px; margin-bottom: 20px;
     }
-
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
     th { background: var(--primary); color: white; padding: 12px; text-align: left; font-size: 13px; }
     td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-    tr:hover { background: #f9f9f9; }
-    
     .vol-row { background: #f0f7ff; display: none; }
     .vol-row.active { display: table-row; }
-
-    .btn { border: none; border-radius: 6px; padding: 8px 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+    .btn { border: none; border-radius: 6px; padding: 6px 12px; font-weight: bold; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
     input, select { padding: 10px; border-radius: 6px; border: 1px solid #ccc; outline: none; }
-
     .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display:none; align-items:center; justify-content:center; z-index:1000; }
     .modal-content { background: white; padding: 25px; border-radius: 15px; width: 400px; }
+    .badge-qtd { background: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -58,7 +50,7 @@
     </div>
   </div>
 
-  <h2 style="text-align: center; color: white; margin: 20px 0; text-transform: uppercase; letter-spacing: 2px;">Gestão de Produtos</h2>
+  <h2 style="text-align: center; color: white; margin: 20px 0; text-transform: uppercase; letter-spacing: 2px;">Gestão de Produtos e Entradas</h2>
 
   <div class="container">
     <div id="painelCadastro" class="glass-panel" style="display: none; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
@@ -81,8 +73,8 @@
           <tr>
             <th style="width: 50px; text-align: center;">EXP.</th>
             <th>FORNECEDOR</th>
-            <th>CÓDIGO</th>
-            <th>DESCRIÇÃO DO PRODUTO</th>
+            <th>PRODUTO</th>
+            <th style="text-align: center;">TOTAL GERAL</th>
             <th style="text-align: right; padding-right: 20px;">AÇÕES</th>
           </tr>
         </thead>
@@ -93,7 +85,7 @@
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top: 0; color: var(--primary);">Novo Volume</h3>
+      <h3 id="modalTitle" style="margin-top: 0; color: var(--primary);">Volume</h3>
       <div id="modalBody">
         <label style="font-size:11px; font-weight:bold;">CÓDIGO DO VOLUME (SKU/EAN):</label>
         <input type="text" id="volCod" style="width:100%; margin-bottom:15px;" placeholder="Ex: VOL-01">
@@ -102,7 +94,7 @@
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
         <button onclick="fecharModal()" class="btn" style="background:#ccc;">CANCELAR</button>
-        <button id="btnConfirmarVol" class="btn" style="background:var(--success); color:white;">CONFIRMAR</button>
+        <button id="btnConfirmarVol" class="btn" style="background:var(--success); color:white;">SALVAR</button>
       </div>
     </div>
   </div>
