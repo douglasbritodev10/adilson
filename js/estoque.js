@@ -16,11 +16,10 @@ onAuthStateChanged(auth, async user => {
             const data = userSnap.data();
             usernameDB = data.nomeCompleto || "Usuário";
             userRole = data.role || "leitor";
-            const painel = document.getElementById("painelAdmin");
-            if(painel) painel.style.display = (userRole === 'admin') ? 'flex' : 'none';
+            // Só admin vê botão de novo endereço
+            if(userRole === 'admin') document.getElementById("btnNovoEnd").style.display = "block";
         }
-        const display = document.getElementById("userDisplay");
-        if(display) display.innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB}`;
+        document.getElementById("userDisplay").innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB}`;
         loadAll();
     } else { window.location.href = "index.html"; }
 });
@@ -40,71 +39,64 @@ async function loadAll() {
     dbState.enderecos = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     dbState.volumes = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    const selFiltro = document.getElementById("filtroForn");
-    if(selFiltro) {
-        selFiltro.innerHTML = '<option value="">Todos os Fornecedores</option>';
-        Object.values(dbState.fornecedores).sort().forEach(nome => {
-            selFiltro.innerHTML += `<option value="${nome}">${nome}</option>`;
-        });
+    const selF = document.getElementById("filtroForn");
+    if(selF) {
+        selF.innerHTML = '<option value="">Todos os Fornecedores</option>';
+        Object.values(dbState.fornecedores).sort().forEach(n => selF.innerHTML += `<option value="${n}">${n}</option>`);
     }
-
-    // Carregar filtros salvos
-    document.getElementById("filtroCod").value = localStorage.getItem('f_est_cod') || "";
-    document.getElementById("filtroDesc").value = localStorage.getItem('f_est_desc') || "";
-    const fornSalvo = localStorage.getItem('f_est_forn') || "";
-    if(selFiltro) selFiltro.value = fornSalvo;
-
     syncUI();
 }
 
 function syncUI() {
     const grid = document.getElementById("gridEnderecos");
     const pendentes = document.getElementById("listaPendentes");
-    if(!grid || !pendentes) return;
-
+    
     grid.innerHTML = "";
     pendentes.innerHTML = "";
 
-    // 1. Renderizar Pendentes
-    dbState.volumes.filter(v => !v.enderecoId || v.enderecoId === "").forEach(v => {
-        const prod = dbState.produtos[v.produtoId] || { nome: "---", fornecedorId: "" };
-        const fNome = dbState.fornecedores[prod.fornecedorId] || "---";
+    // 1. FILTRAR PENDENTES (Aguardando Armazenar): Somente Qtd > 0 e Sem Endereço
+    const listaFalta = dbState.volumes.filter(v => (!v.enderecoId || v.enderecoId === "") && v.quantidade > 0);
+    document.getElementById("countPendentes").innerText = listaFalta.length;
+
+    listaFalta.forEach(v => {
+        const p = dbState.produtos[v.produtoId] || { nome: "Desconhecido", fornecedorId: "" };
+        const f = dbState.fornecedores[p.fornecedorId] || "---";
+        
         const div = document.createElement("div");
         div.className = "item-pendente";
         div.innerHTML = `
-            <div style="flex:1">
-                <small>${fNome}</small><br>
-                <b>${v.descricao}</b><br>
-                <span class="badge-qtd">Qtd: ${v.quantidade}</span>
+            <div style="margin-bottom:8px;">
+                <small style="color:var(--primary); font-weight:bold;">${f}</small><br>
+                <b style="font-size:14px;">${v.descricao}</b>
+                <span class="badge-info">SKU/Cod: ${v.codigo || 'S/N'}</span>
             </div>
-            <button onclick="window.abrirMover('${v.id}')" class="btn" style="background:var(--success); color:white;">GUARDAR</button>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="background:var(--warning); padding:2px 8px; border-radius:4px; font-weight:bold;">${v.quantidade} un</span>
+                <button onclick="window.abrirGuardar('${v.id}')" class="btn btn-primary" style="padding:4px 10px; font-size:12px;">GUARDAR</button>
+            </div>
         `;
         pendentes.appendChild(div);
     });
 
-    // 2. Renderizar Grid
+    // 2. GRID DE ENDEREÇOS
     dbState.enderecos.forEach(e => {
-        const vols = dbState.volumes.filter(v => v.enderecoId === e.id && v.quantidade > 0);
+        const volsNesteEnd = dbState.volumes.filter(v => v.enderecoId === e.id && v.quantidade > 0);
         const card = document.createElement("div");
         card.className = "card-endereco";
-        const txtBusca = `${e.rua} ${e.modulo} ${vols.map(v => v.descricao + ' ' + (dbState.fornecedores[dbState.produtos[v.produtoId]?.fornecedorId] || '')).join(" ")}`.toLowerCase();
-        card.dataset.busca = txtBusca;
+        
+        // Texto invisível para busca rápida
+        const buscaData = `${e.rua} ${e.modulo} ${e.nivel} ${volsNesteEnd.map(v => v.descricao + ' ' + (v.codigo||'')).join(' ')}`.toLowerCase();
+        card.dataset.busca = buscaData;
+        card.dataset.forn = volsNesteEnd.map(v => dbState.fornecedores[dbState.produtos[v.produtoId]?.fornecedorId] || '').join('|').toLowerCase();
 
-        let itensHTML = vols.map(v => `
-            <div class="vol-item">
-                <span><b>${v.quantidade}x</b> ${v.descricao}</span>
-                <div style="display:flex; gap:5px;">
-                    <button onclick="window.abrirMover('${v.id}')" title="Mover" style="border:none; background:none; color:var(--primary); cursor:pointer;"><i class="fas fa-exchange-alt"></i></button>
-                    <button onclick="window.abrirSaida('${v.id}')" title="Saída" style="border:none; background:none; color:var(--danger); cursor:pointer;"><i class="fas fa-sign-out-alt"></i></button>
-                </div>
+        let itensHTML = volsNesteEnd.map(v => `
+            <div style="border-bottom:1px solid #eee; padding:4px 0;">
+                <b>${v.quantidade}x</b> ${v.descricao}
             </div>
         `).join("");
 
         card.innerHTML = `
-            <div class="card-header">
-                <span>RUA <b>${e.rua}</b> MOD <b>${e.modulo}</b> NIV <b>${e.nivel}</b></span>
-                ${userRole === 'admin' ? `<i class="fas fa-trash" onclick="window.deletarLocal('${e.id}')" style="cursor:pointer; opacity:0.5"></i>` : ''}
-            </div>
+            <div class="card-header">RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}</div>
             <div class="card-body">${itensHTML || '<small style="color:#ccc">Vazio</small>'}</div>
         `;
         grid.appendChild(card);
@@ -112,7 +104,8 @@ function syncUI() {
     window.filtrarEstoque();
 }
 
-window.abrirMover = (volId) => {
+// --- LÓGICA DE DESMEMBRAMENTO (SPLIT) ---
+window.abrirGuardar = (volId) => {
     const vol = dbState.volumes.find(v => v.id === volId);
     const modal = document.getElementById("modalMaster");
     document.getElementById("modalTitle").innerText = "Endereçar Volume";
@@ -120,113 +113,111 @@ window.abrirMover = (volId) => {
     let opts = dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo} - NIV ${e.nivel}</option>`).join('');
     
     document.getElementById("modalBody").innerHTML = `
-        <p>Produto: <b>${vol.descricao}</b></p>
-        <p style="font-size:12px">Qtd disponível: <b>${vol.quantidade}</b></p>
-        <label>QUANTIDADE A GUARDAR:</label>
-        <input type="number" id="qtdMover" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; text-align:center;">
-        <label style="display:block; margin-top:10px;">ENDEREÇO DESTINO:</label>
-        <select id="selDestino" style="width:100%;">${opts}</select>
+        <p>Guardando: <b>${vol.descricao}</b></p>
+        <p>Total disponível: <b>${vol.quantidade}</b></p>
+        <label>QTD A SER ARMAZENADA NESTE ENDEREÇO:</label>
+        <input type="number" id="qtdAcao" value="${vol.quantidade}" min="1" max="${vol.quantidade}">
+        <label style="display:block; margin-top:15px;">SELECIONE O DESTINO:</label>
+        <select id="selDestino">${opts}</select>
     `;
     modal.style.display = "flex";
 
     document.getElementById("btnConfirmar").onclick = async () => {
         const destinoId = document.getElementById("selDestino").value;
-        const q = parseInt(document.getElementById("qtdMover").value);
+        const qtdInformada = parseInt(document.getElementById("qtdAcao").value);
 
-        if(q <= 0 || q > vol.quantidade) return alert("Quantidade inválida!");
+        if(qtdInformada <= 0 || qtdInformada > vol.quantidade) return alert("Quantidade inválida!");
 
-        if (q === vol.quantidade) {
-            await updateDoc(doc(db, "volumes", volId), { enderecoId: destinoId, ultimaMovimentacao: serverTimestamp() });
-        } else {
-            // DESMEMBRAMENTO (Split)
-            await updateDoc(doc(db, "volumes", volId), { quantidade: increment(-q) });
-            await addDoc(collection(db, "volumes"), {
-                produtoId: vol.produtoId, descricao: vol.descricao, codigo: vol.codigo || "",
-                quantidade: q, enderecoId: destinoId, ultimaMovimentacao: serverTimestamp()
+        try {
+            if (qtdInformada === vol.quantidade) {
+                // Caso guarde TUDO: Só atualiza o endereço
+                await updateDoc(doc(db, "volumes", volId), { 
+                    enderecoId: destinoId, 
+                    ultimaMovimentacao: serverTimestamp() 
+                });
+            } else {
+                // DESMEMBRAMENTO: Diminui do original e cria um novo já endereçado
+                await updateDoc(doc(db, "volumes", volId), { 
+                    quantidade: increment(-qtdInformada) 
+                });
+                await addDoc(collection(db, "volumes"), {
+                    produtoId: vol.produtoId,
+                    descricao: vol.descricao,
+                    codigo: vol.codigo || "",
+                    quantidade: qtdInformada,
+                    enderecoId: destinoId,
+                    ultimaMovimentacao: serverTimestamp()
+                });
+            }
+            
+            // Log de histórico
+            await addDoc(collection(db, "movimentacoes"), {
+                tipo: "Entrada/Endereçamento", produto: vol.descricao, quantidade: qtdInformada, usuario: usernameDB, data: serverTimestamp()
             });
-        }
 
-        await addDoc(collection(db, "movimentacoes"), {
-            tipo: "Endereçamento", produto: vol.descricao, quantidade: q, usuario: usernameDB, data: serverTimestamp()
-        });
-        window.fecharModal(); loadAll();
+            window.fecharModal();
+            loadAll();
+        } catch (e) { alert("Erro ao salvar."); }
     };
 };
 
-window.abrirSaida = (volId) => {
-    const vol = dbState.volumes.find(v => v.id === volId);
+// --- CADASTRO DE ENDEREÇO ---
+window.abrirNovoEndereco = () => {
     const modal = document.getElementById("modalMaster");
-    document.getElementById("modalTitle").innerText = "Dar Saída";
+    document.getElementById("modalTitle").innerText = "Cadastrar Novo Endereço";
     document.getElementById("modalBody").innerHTML = `
-        <p>Produto: <b>${vol.descricao}</b></p>
-        <label>QUANTIDADE DE SAÍDA:</label>
-        <input type="number" id="qtdSaida" value="${vol.quantidade}" min="1" max="${vol.quantidade}" style="width:100%; text-align:center;">
+        <label>RUA (Ex: A, B, 01...)</label>
+        <input type="text" id="newRua" placeholder="Rua" style="margin-bottom:10px;">
+        <label>MÓDULO (Ex: 10, 20...)</label>
+        <input type="number" id="newMod" placeholder="Módulo" style="margin-bottom:10px;">
+        <label>NÍVEL (Ex: 1, 2, 3...)</label>
+        <input type="number" id="newNiv" placeholder="Nível">
     `;
     modal.style.display = "flex";
 
     document.getElementById("btnConfirmar").onclick = async () => {
-        const q = parseInt(document.getElementById("qtdSaida").value);
-        if(q > 0 && q <= vol.quantidade) {
-            await updateDoc(doc(db, "volumes", volId), { quantidade: increment(-q) });
-            await addDoc(collection(db, "movimentacoes"), { 
-                produto: vol.descricao, tipo: "Saída", quantidade: q, usuario: usernameDB, data: serverTimestamp() 
-            });
-            window.fecharModal(); loadAll();
+        const rua = document.getElementById("newRua").value.trim().toUpperCase();
+        const mod = document.getElementById("newMod").value;
+        const niv = document.getElementById("newNiv").value;
+
+        if(!rua || !mod) return alert("Rua e Módulo são obrigatórios!");
+
+        // Verifica duplicidade local
+        if(dbState.enderecos.find(e => e.rua === rua && e.modulo === mod && e.nivel === niv)) {
+            return alert("Este endereço já existe!");
         }
+
+        await addDoc(collection(db, "enderecos"), { rua, modulo: mod, nivel: niv, data: serverTimestamp() });
+        window.fecharModal();
+        loadAll();
     };
 };
 
 window.filtrarEstoque = () => {
-    const fCod = document.getElementById("filtroCod").value.toLowerCase();
-    const fForn = document.getElementById("filtroForn").value.toLowerCase();
-    const fDesc = document.getElementById("filtroDesc").value.toLowerCase();
+    const sku = document.getElementById("filtroSKU").value.toLowerCase();
+    const forn = document.getElementById("filtroForn").value.toLowerCase();
+    const desc = document.getElementById("filtroDesc").value.toLowerCase();
+    let count = 0;
 
-    localStorage.setItem('f_est_cod', fCod);
-    localStorage.setItem('f_est_forn', fForn);
-    localStorage.setItem('f_est_desc', fDesc);
-
-    let c = 0;
     document.querySelectorAll(".card-endereco").forEach(card => {
-        const b = card.dataset.busca;
-        const match = b.includes(fCod) && (fForn === "" || b.includes(fForn)) && b.includes(fDesc);
-        card.style.display = match ? "block" : "none";
-        if(match) c++;
+        const texto = card.dataset.busca;
+        const fornecedores = card.dataset.forn;
+        
+        const matches = texto.includes(sku) && 
+                        texto.includes(desc) && 
+                        (forn === "" || fornecedores.includes(forn));
+
+        card.style.display = matches ? "block" : "none";
+        if(matches) count++;
     });
-    document.getElementById("countDisplay").innerText = c;
-};
-
-window.criarEndereco = async () => {
-    if(userRole !== 'admin') return;
-    const r = document.getElementById("addRua").value.trim().toUpperCase();
-    const m = document.getElementById("addMod").value.trim();
-    const n = document.getElementById("addNiv").value.trim() || "1";
-    if(!r || !m) return alert("Rua e Módulo obrigatórios!");
-
-    // VERIFICAÇÃO DE DUPLICIDADE
-    const existe = dbState.enderecos.find(e => e.rua === r && e.modulo === m && e.nivel === n);
-    if(existe) return alert("Este endereço já está cadastrado!");
-
-    await addDoc(collection(db, "enderecos"), { rua: r, modulo: m, nivel: n, data: serverTimestamp() });
-    document.getElementById("addRua").value = "";
-    document.getElementById("addMod").value = "";
-    loadAll();
-};
-
-window.deletarLocal = async (id) => {
-    if(userRole !== 'admin') return;
-    if(confirm("Excluir endereço? Itens nele voltarão para Pendentes.")){
-        const afetados = dbState.volumes.filter(v => v.enderecoId === id);
-        for(let v of afetados) { await updateDoc(doc(db, "volumes", v.id), { enderecoId: "" }); }
-        await deleteDoc(doc(db, "enderecos", id));
-        loadAll();
-    }
+    document.getElementById("countDisplay").innerText = count;
 };
 
 window.limparFiltros = () => {
-    localStorage.removeItem('f_est_cod');
-    localStorage.removeItem('f_est_forn');
-    localStorage.removeItem('f_est_desc');
-    location.reload();
+    document.getElementById("filtroSKU").value = "";
+    document.getElementById("filtroForn").value = "";
+    document.getElementById("filtroDesc").value = "";
+    window.filtrarEstoque();
 };
 
 window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
