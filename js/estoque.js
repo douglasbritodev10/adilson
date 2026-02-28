@@ -5,14 +5,14 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 let dbState = { fornecedores: {}, produtos: {}, enderecos: [], volumes: [] };
-let nomeCompletoDB = "Usuário";
+let usernameDB = "Usuário";
 
 // --- AUTENTICAÇÃO E CARREGAMENTO ---
 onAuthStateChanged(auth, async user => {
     if (user) {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) nomeCompletoDB = userSnap.data().nomeCompleto || user.email.split('@')[0].toUpperCase();
+        if (userSnap.exists()) usernameDB = userSnap.data().username || user.email.split('@')[0].toUpperCase();
         
         const display = document.getElementById("userDisplay");
         if(display) display.innerHTML = `<i class="fas fa-user-circle"></i> ${usernameDB}`;
