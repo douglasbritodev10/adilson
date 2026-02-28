@@ -38,11 +38,12 @@ async function loadAll() {
         if(filtroForn) filtroForn.innerHTML = '<option value="">Todos os Fornecedores</option>';
 
         fSnap.forEach(d => {
-            dbState.fornecedores[d.id] = d.data().nome;
+            const nomeForn = d.data().nome;
+            dbState.fornecedores[d.id] = nomeForn;
             if(filtroForn){
                 let opt = document.createElement("option");
-                opt.value = d.data().nome.toLowerCase();
-                opt.innerText = d.data().nome;
+                opt.value = nomeForn.toLowerCase(); // Valor em minúsculo para o filtro
+                opt.innerText = nomeForn;
                 filtroForn.appendChild(opt);
             }
         });
@@ -74,33 +75,37 @@ async function syncUI() {
     if(window.filtrarEstoque) window.filtrarEstoque();
 }
 
-// --- MOVIMENTAÇÃO COM LÓGICA DE SOMA (25+25) ---
+// --- LÓGICA DE MOVIMENTAÇÃO (AQUI ESTÁ A JUNÇÃO 25+25) ---
 window.confirmarMovimentacao = async () => {
     const volId = document.getElementById("modalVolId")?.value;
     const destId = document.getElementById("selDestino")?.value;
     const qtdMover = parseInt(document.getElementById("qtdMover")?.value);
 
     if (!volId || !destId || isNaN(qtdMover) || qtdMover <= 0) {
-        return alert("Preencha o destino e a quantidade corretamente!");
+        return alert("Selecione o destino e a quantidade!");
     }
 
     const volOrigem = dbState.volumes.find(v => v.id === volId);
-    if (!volOrigem) return alert("Erro: Volume original não encontrado.");
+    if (!volOrigem) return alert("Erro ao localizar volume de origem.");
 
     try {
-        // Verifica se já existe o mesmo produto e volume no destino para SOMAR
-        const itemExistente = dbState.volumes.find(v => 
+        // PROCURA SE JÁ EXISTE O MESMO PRODUTO NO MESMO ENDEREÇO DESTINO
+        // Comparamos: enderecoId, produtoId e descricao (volume)
+        const existenteNoDestino = dbState.volumes.find(v => 
             v.enderecoId === destId && 
             v.produtoId === volOrigem.produtoId && 
-            v.descricao === volOrigem.descricao
+            String(v.descricao).trim().toLowerCase() === String(volOrigem.descricao).trim().toLowerCase() &&
+            v.quantidade > 0
         );
 
-        if (itemExistente) {
-            await updateDoc(doc(db, "volumes", itemExistente.id), {
+        if (existenteNoDestino) {
+            // JUNÇÃO: Apenas aumenta a quantidade no destino
+            await updateDoc(doc(db, "volumes", existenteNoDestino.id), {
                 quantidade: increment(qtdMover),
                 ultimaMov: serverTimestamp()
             });
         } else {
+            // CRIAÇÃO: Adiciona um novo registro naquele endereço
             await addDoc(collection(db, "volumes"), {
                 produtoId: volOrigem.produtoId,
                 descricao: volOrigem.descricao,
@@ -110,82 +115,24 @@ window.confirmarMovimentacao = async () => {
             });
         }
 
-        // Subtrai da origem
+        // SUBTRAÇÃO: Remove da origem
         const novaQtdOrigem = volOrigem.quantidade - qtdMover;
         await updateDoc(doc(db, "volumes", volId), {
             quantidade: novaQtdOrigem,
-            enderecoId: novaQtdOrigem === 0 ? "" : volOrigem.enderecoId
+            // Se zerar, desvinculamos o endereço (mas mantemos o registro para histórico/pendência se necessário)
+            enderecoId: novaQtdOrigem <= 0 ? "" : volOrigem.enderecoId
         });
 
         window.fecharModal();
-        loadAll();
+        // Recarrega tudo para atualizar a tela
+        await loadAll();
     } catch (e) {
-        console.error(e);
-        alert("Erro técnico ao processar movimentação.");
+        console.error("Erro na junção:", e);
+        alert("Erro técnico ao processar movimentação. Verifique o console.");
     }
 };
 
-// --- CADASTRO DE ENDEREÇO COM TRAVA DE DUPLICIDADE ---
-window.salvarNovoEndereco = async () => {
-    const rua = document.getElementById("addRua")?.value.trim().toUpperCase();
-    const mod = document.getElementById("addModulo")?.value.trim();
-    const niv = document.getElementById("addNivel")?.value.trim() || "";
-
-    if (!rua || !mod) return alert("Rua e Módulo são obrigatórios!");
-
-    // Trava para não repetir endereço
-    const duplicado = dbState.enderecos.find(e => e.rua === rua && e.modulo === mod && (e.nivel || "") === niv);
-    if (duplicado) return alert("Este endereço já está cadastrado!");
-
-    try {
-        await addDoc(collection(db, "enderecos"), { rua, modulo: mod, nivel: niv });
-        window.fecharModal();
-        loadAll();
-    } catch (e) { alert("Erro ao salvar endereço."); }
-};
-
-// --- MODAIS (GERANDO O BOTÃO ÚNICO) ---
-window.abrirModalMover = (id) => {
-    const v = dbState.volumes.find(vol => vol.id === id);
-    if(!v) return;
-    const p = dbState.produtos[v.produtoId] || {nome: "Produto"};
-
-    document.getElementById("modalTitle").innerText = "Movimentar Estoque";
-    document.getElementById("modalBody").innerHTML = `
-        <input type="hidden" id="modalVolId" value="${v.id}">
-        <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-bottom:15px;">
-            <strong>${p.nome}</strong><br>
-            <small>${v.descricao} | Saldo atual: ${v.quantidade}</small>
-        </div>
-        <label>Destino:</label>
-        <select id="selDestino" class="form-control" style="width:100%; margin-bottom:10px; padding:8px;">
-            <option value="">Selecione o Local...</option>
-            ${dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo} ${e.nivel ? '- '+e.nivel : ''}</option>`).join('')}
-        </select>
-        <label>Quantidade a mover:</label>
-        <input type="number" id="qtdMover" value="${v.quantidade}" max="${v.quantidade}" min="1" style="width:100%; padding:8px; margin-bottom:15px;">
-        
-        <button onclick="window.confirmarMovimentacao()" class="btn" style="width:100%; background:var(--success); color:white; font-weight:bold;">
-            CONFIRMAR MOVIMENTAÇÃO
-        </button>
-    `;
-    document.getElementById("modalMaster").style.display = "flex";
-};
-
-window.abrirModalNovoEnd = () => {
-    document.getElementById("modalTitle").innerText = "Cadastrar Novo Endereço";
-    document.getElementById("modalBody").innerHTML = `
-        <input type="text" id="addRua" placeholder="Rua (Ex: A)" class="form-control" style="width:100%; margin-bottom:10px; padding:8px;">
-        <input type="text" id="addModulo" placeholder="Módulo (Ex: 102)" class="form-control" style="width:100%; margin-bottom:10px; padding:8px;">
-        <input type="text" id="addNivel" placeholder="Nível/Altura (Opcional)" class="form-control" style="width:100%; margin-bottom:15px; padding:8px;">
-        <button onclick="window.salvarNovoEndereco()" class="btn" style="width:100%; background:var(--primary); color:white; font-weight:bold;">
-            CADASTRAR ENDEREÇO
-        </button>
-    `;
-    document.getElementById("modalMaster").style.display = "flex";
-};
-
-// --- RENDERIZAÇÃO E FILTROS (MANTIDOS ORIGINAIS) ---
+// --- RENDERIZAÇÃO COM SUPORTE AO FILTRO DE FORNECEDOR ---
 function renderEnderecos() {
     const grid = document.getElementById("gridEnderecos");
     if(!grid) return;
@@ -196,22 +143,25 @@ function renderEnderecos() {
         const card = document.createElement('div');
         card.className = "card-endereco";
         
+        // Texto que será usado na busca (incluindo fornecedor agora!)
         let buscaTxt = `rua ${end.rua} mod ${end.modulo} ${end.nivel || ""} `;
         
         let htmlVols = vols.map(v => {
             const p = dbState.produtos[v.produtoId] || {nome:"---", forn:"---"};
-            buscaTxt += `${p.nome} ${v.descricao} `.toLowerCase();
+            // Adicionamos o nome do fornecedor no texto de busca do card
+            buscaTxt += `${p.nome} ${v.forn} ${v.descricao} `.toLowerCase();
+            
             return `
             <div class="vol-item">
                 <div style="flex:1">
-                    <small style="color:var(--primary)">${p.forn}</small><br>
+                    <small style="color:var(--primary); font-weight:bold;">${p.forn}</small><br>
                     <strong>${p.nome}</strong><br>
                     <small>${v.descricao} | Qtd: <b>${v.quantidade}</b></small>
                 </div>
                 ${userRole !== 'leitor' ? `
                 <div class="actions">
-                    <button onclick="window.abrirModalMover('${v.id}')"><i class="fas fa-exchange-alt"></i></button>
-                    <button onclick="window.darSaida('${v.id}', '${v.descricao}')" style="color:var(--danger)"><i class="fas fa-sign-out-alt"></i></button>
+                    <button onclick="window.abrirModalMover('${v.id}')" title="Mover"><i class="fas fa-exchange-alt"></i></button>
+                    <button onclick="window.darSaida('${v.id}', '${v.descricao}')" style="color:var(--danger)" title="Saída"><i class="fas fa-sign-out-alt"></i></button>
                 </div>` : ''}
             </div>`;
         }).join('');
@@ -227,6 +177,82 @@ function renderEnderecos() {
         grid.appendChild(card);
     });
 }
+
+// --- FILTROS ---
+window.filtrarEstoque = () => {
+    const fCod = document.getElementById("filtroCod")?.value.toLowerCase() || "";
+    const fForn = document.getElementById("filtroForn")?.value.toLowerCase() || "";
+    const fDesc = document.getElementById("filtroDesc")?.value.toLowerCase() || "";
+    let c = 0;
+
+    document.querySelectorAll(".card-endereco").forEach(card => {
+        const busca = card.dataset.busca || "";
+        // Verifica se o texto de busca do card contém o código AND descrição AND fornecedor
+        const match = busca.includes(fCod) && busca.includes(fDesc) && (fForn === "" || busca.includes(fForn));
+        
+        card.style.display = match ? "flex" : "none";
+        if(match) c++;
+    });
+
+    const countDisp = document.getElementById("countDisplay");
+    if(countDisp) countDisp.innerText = c;
+};
+
+// --- RESTANTE DAS FUNÇÕES (MODAIS E AUXILIARES) ---
+window.abrirModalMover = (id) => {
+    const v = dbState.volumes.find(vol => vol.id === id);
+    if(!v) return;
+    const p = dbState.produtos[v.produtoId] || {nome: "Produto"};
+
+    document.getElementById("modalTitle").innerText = "Movimentar Estoque";
+    document.getElementById("modalBody").innerHTML = `
+        <input type="hidden" id="modalVolId" value="${v.id}">
+        <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-bottom:15px;">
+            <small>${p.forn}</small><br>
+            <strong>${p.nome}</strong><br>
+            <small>${v.descricao} | Saldo: ${v.quantidade}</small>
+        </div>
+        <label>Para onde deseja mover?</label>
+        <select id="selDestino" class="form-control" style="width:100%; margin-bottom:10px; padding:10px;">
+            <option value="">Selecione o Endereço...</option>
+            ${dbState.enderecos.map(e => `<option value="${e.id}">RUA ${e.rua} - MOD ${e.modulo} ${e.nivel ? '('+e.nivel+')' : ''}</option>`).join('')}
+        </select>
+        <label>Quantidade:</label>
+        <input type="number" id="qtdMover" value="${v.quantidade}" max="${v.quantidade}" min="1" class="form-control" style="width:100%; padding:10px; margin-bottom:15px;">
+        
+        <button onclick="window.confirmarMovimentacao()" class="btn" style="width:100%; background:var(--success); color:white; font-weight:bold; height:45px;">
+            CONFIRMAR MOVIMENTAÇÃO
+        </button>
+    `;
+    document.getElementById("modalMaster").style.display = "flex";
+};
+
+window.abrirModalNovoEnd = () => {
+    document.getElementById("modalTitle").innerText = "Novo Endereço";
+    document.getElementById("modalBody").innerHTML = `
+        <input type="text" id="addRua" placeholder="Rua (Ex: A)" class="form-control" style="width:100%; margin-bottom:10px; padding:10px;">
+        <input type="text" id="addModulo" placeholder="Módulo (Ex: 102)" class="form-control" style="width:100%; margin-bottom:10px; padding:10px;">
+        <input type="text" id="addNivel" placeholder="Nível/Altura (Opcional)" class="form-control" style="width:100%; margin-bottom:15px; padding:10px;">
+        <button onclick="window.salvarNovoEndereco()" class="btn" style="width:100%; background:var(--primary); color:white; font-weight:bold; height:45px;">
+            CADASTRAR ENDEREÇO
+        </button>
+    `;
+    document.getElementById("modalMaster").style.display = "flex";
+};
+
+window.salvarNovoEndereco = async () => {
+    const rua = document.getElementById("addRua")?.value.trim().toUpperCase();
+    const mod = document.getElementById("addModulo")?.value.trim();
+    const niv = document.getElementById("addNivel")?.value.trim() || "";
+    if (!rua || !mod) return alert("Rua e Módulo são obrigatórios!");
+    const duplicado = dbState.enderecos.find(e => e.rua === rua && e.modulo === mod && (e.nivel || "") === niv);
+    if (duplicado) return alert("Este endereço já existe!");
+    try {
+        await addDoc(collection(db, "enderecos"), { rua, modulo: mod, nivel: niv });
+        window.fecharModal();
+        loadAll();
+    } catch (e) { alert("Erro ao salvar."); }
+};
 
 function renderPendentes() {
     const area = document.getElementById("pendentesArea");
@@ -247,18 +273,26 @@ function renderPendentes() {
     });
 }
 
-// Auxiliares
+window.limparFiltros = () => {
+    document.getElementById("filtroCod").value = "";
+    document.getElementById("filtroForn").value = "";
+    document.getElementById("filtroDesc").value = "";
+    window.filtrarEstoque();
+};
+
 window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
 window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
+
 window.darSaida = async (id, desc) => {
-    const q = prompt(`Dar saída no volume: ${desc}\nQuantidade:`);
+    const q = prompt(`Saída: ${desc}\nQuantidade:`);
     if(q && parseInt(q) > 0) {
         await updateDoc(doc(db, "volumes", id), { quantidade: increment(-parseInt(q)) });
         loadAll();
     }
 };
+
 window.deletarLocal = async (id) => {
-    if(confirm("Deseja excluir este endereço permanentemente?")) {
+    if(confirm("Excluir endereço permanentemente?")) {
         await deleteDoc(doc(db, "enderecos", id));
         loadAll();
     }
