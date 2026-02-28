@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fornecedores - Móveis Simonetti</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
             --primary: #004a99;
-            --glass: rgba(255, 255, 255, 0.2);
-            --glass-border: rgba(255, 255, 255, 0.3);
-            --danger: #dc3545;
-            --success: #28a745;
-            --warning: #f39c12;
+            --glass: rgba(255, 255, 255, 0.9);
+            --danger: #ff4d4d;
+            --success: #00c853;
+            --warning: #ffab00;
         }
 
         body {
@@ -20,43 +20,51 @@
             background: linear-gradient(135deg, #002d5f 0%, #004a99 100%);
             background-attachment: fixed;
             min-height: 100vh;
-            color: white;
+            color: #333;
         }
 
-        /* Top Bar */
+        /* Top Bar Padronizada */
         .top-nav {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(15px);
+            padding: 10px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 25px;
-            background: rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-        }
-        .nav-left { display: flex; align-items: center; gap: 15px; }
-        .btn-nav {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: sticky; top: 0; z-index: 100;
         }
 
-        /* Form Card */
-        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
-        
+        .nav-left { display: flex; align-items: center; gap: 15px; color: white; }
+        .nav-right { display: flex; align-items: center; gap: 15px; }
+
+        .btn-nav {
+            background: rgba(255,255,255,0.1);
+            border: none; color: white; padding: 8px 15px;
+            border-radius: 5px; cursor: pointer; transition: 0.3s;
+            text-decoration: none; font-size: 14px; font-weight: bold;
+        }
+        .btn-nav:hover { background: rgba(255,255,255,0.2); }
+
+        .user-badge {
+            color: white; font-size: 14px; font-weight: 500;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .container { padding: 30px; max-width: 1200px; margin: 0 auto; }
+
         .glass-panel {
             background: var(--glass);
-            backdrop-filter: blur(15px);
-            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
             border-radius: 15px;
             padding: 25px;
             margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
-        .grid-form {
+        h2 { margin-top: 0; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+
+        .form-cadastro {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
@@ -64,70 +72,72 @@
         }
 
         .field-group { display: flex; flex-direction: column; gap: 5px; }
-        .field-group label { font-size: 12px; font-weight: bold; text-transform: uppercase; }
-        .field-group input {
+        .field-group label { font-size: 12px; font-weight: bold; color: #666; }
+        
+        input {
             padding: 10px;
-            border-radius: 6px;
-            border: 1px solid var(--glass-border);
-            background: rgba(255,255,255,0.9);
-            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            outline: none;
         }
 
-        /* Table Style */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: rgba(255, 255, 255, 0.95);
-            color: #333;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        th { background: #eee; padding: 12px; text-align: left; font-size: 13px; border-bottom: 2px solid #ddd; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th { background: #f8f9fa; color: var(--primary); padding: 15px; text-align: left; font-size: 13px; }
+        td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 14px; }
         
         .btn-action {
-            padding: 5px 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            color: white;
-            font-weight: bold;
-            margin-left: 5px;
+            border: none; padding: 6px 10px; border-radius: 4px;
+            cursor: pointer; transition: 0.2s; color: white; font-size: 12px;
+        }
+
+        /* Modal Estilo Simonetti */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.6);
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; padding: 25px; border-radius: 15px;
+            width: 400px; max-width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
     </style>
 </head>
 <body>
 
-    <div class="top-nav">
+    <nav class="top-nav">
         <div class="nav-left">
-            <a href="dashboard.html" class="btn-nav">← Voltar</a>
-            <span id="labelUser">Olá, Usuário</span>
+            <a href="dashboard.html" class="btn-nav"><i class="fas fa-arrow-left"></i> VOLTAR</a>
+            <span style="font-weight: bold; letter-spacing: 1px;">FORNECEDORES</span>
         </div>
-        <div style="font-weight: bold;">CADASTRO DE FORNECEDORES</div>
-        <button id="btnLogout" class="btn-nav" style="background: var(--danger)">Sair</button>
-    </div>
+        <div class="nav-right">
+            <div class="user-badge" id="labelUser"><i class="fas fa-user-circle"></i> Carregando...</div>
+            <button id="btnLogout" class="btn-nav" style="background: var(--danger);"><i class="fas fa-sign-out-alt"></i> SAIR</button>
+        </div>
+    </nav>
 
     <div class="container">
         <div class="glass-panel">
-            <h3 style="margin-top:0">Novo Fornecedor</h3>
-            <div class="grid-form">
+            <h2><i class="fas fa-plus-circle"></i> Novo Cadastro</h2>
+            <div class="form-cadastro">
                 <div class="field-group">
-                    <label>Nome / Razão Social:</label>
-                    <input type="text" id="nomeF" placeholder="Ex: Móveis Estrela">
+                    <label>FORNECEDOR:</label>
+                    <input type="text" id="nomeF" placeholder="Nome da Empresa">
                 </div>
                 <div class="field-group">
                     <label>CNPJ:</label>
-                    <input type="text" id="cnpjF" placeholder="00.000.000/0000-00" maxlength="18">
+                    <input type="text" id="cnpjF" placeholder="00.000.000/0000-00">
                 </div>
                 <div class="field-group">
-                    <label>E-mail:</label>
-                    <input type="email" id="emailF" placeholder="contato@fornecedor.com">
+                    <label>E-MAIL:</label>
+                    <input type="email" id="emailF" placeholder="contato@empresa.com">
                 </div>
                 <div class="field-group">
-                    <label>Telefone:</label>
-                    <input type="text" id="telefoneF" placeholder="(00) 00000-0000" maxlength="15">
+                    <label>TELEFONE:</label>
+                    <input type="text" id="telefoneF" placeholder="(00) 00000-0000">
                 </div>
-                <button id="btnSalvarF" class="btn-action" style="background: var(--success); height: 40px;">CADASTRAR</button>
+                <button id="btnSalvarF" class="btn-action" style="background: var(--success); height: 38px; font-weight: bold;">
+                    <i class="fas fa-save"></i> CADASTRAR
+                </button>
             </div>
         </div>
 
@@ -135,16 +145,41 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Fornecedor</th>
+                        <th>FORNECEDOR</th>
                         <th>CNPJ</th>
-                        <th>E-mail</th>
-                        <th>Telefone</th>
-                        <th style="text-align: right;">Ações</th>
+                        <th>E-MAIL</th>
+                        <th>TELEFONE</th>
+                        <th style="text-align: right; padding-right: 25px;">AÇÕES</th>
                     </tr>
                 </thead>
-                <tbody id="listaF">
-                    </tbody>
+                <tbody id="listaF"></tbody>
             </table>
+        </div>
+    </div>
+
+    <div id="modalEdit" class="modal">
+        <div class="modal-content">
+            <h3 style="color: var(--primary); margin-top: 0;">Editar Fornecedor</h3>
+            <div class="field-group" style="margin-bottom: 10px;">
+                <label>NOME:</label>
+                <input type="text" id="editNome">
+            </div>
+            <div class="field-group" style="margin-bottom: 10px;">
+                <label>CNPJ:</label>
+                <input type="text" id="editCnpj">
+            </div>
+            <div class="field-group" style="margin-bottom: 10px;">
+                <label>E-MAIL:</label>
+                <input type="text" id="editEmail">
+            </div>
+            <div class="field-group" style="margin-bottom: 15px;">
+                <label>TELEFONE:</label>
+                <input type="text" id="editTel">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button onclick="fecharModal()" class="btn-action" style="background: #ccc; color: #333;">CANCELAR</button>
+                <button id="btnConfirmarEdit" class="btn-action" style="background: var(--primary);">SALVAR ALTERAÇÕES</button>
+            </div>
         </div>
     </div>
 
