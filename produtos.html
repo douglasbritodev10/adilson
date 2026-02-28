@@ -2,82 +2,83 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Simonetti - Gestão de Produtos</title>
+  <title>CONTROLE DE PULMÃO - ASSISTENCIA</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     :root {
-      --primary: #004a99; --glass: rgba(255, 255, 255, 0.95);
-      --danger: #ff4d4d; --success: #00c853; --gray: #6c757d; --info: #17a2b8;
+      --primary: #004a99; --glass: rgba(255, 255, 255, 0.9);
+      --danger: #ff4d4d; --success: #00c853; --gray: #6c757d; --warning: #ffab00; --info: #17a2b8;
     }
     body { 
       background: linear-gradient(135deg, #001f3f 0%, #004a99 100%);
-      background-attachment: fixed; margin: 0; font-family: 'Segoe UI', sans-serif; min-height: 100vh;
+      background-attachment: fixed; margin: 0; font-family: 'Segoe UI', sans-serif; 
+      color: #333; min-height: 100vh;
     }
-    .top-nav { background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; color: white; border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top:0; z-index:10; }
-    .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
-    .glass-panel { background: var(--glass); padding: 20px; border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin-bottom: 20px; }
-    
+    .top-nav { 
+      background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(15px);
+      padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; z-index: 100;
+    }
+    .glass-panel { 
+      background: var(--glass); backdrop-filter: blur(10px); 
+      margin: 20px; padding: 20px; border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
-    th { background: #f8f9fa; color: var(--primary); padding: 15px; text-align: left; font-size: 12px; border-bottom: 2px solid #eee; text-transform: uppercase; }
-    td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { background: #f1f3f5; color: var(--primary); padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; }
+    td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
     
-    .prod-row { cursor: pointer; transition: 0.2s; background: #fff; }
-    .prod-row:hover { background: #f1f7ff; }
+    .prod-row { background: #fff; font-weight: bold; cursor: pointer; }
+    .child-row { background: #fcfcfc; display: none; }
+    .child-row.active { display: table-row; }
     
-    /* Estilo das linhas de volume (filhas) */
-    .child-row { background: #fdfdfd; display: none; border-left: 4px solid var(--primary); }
-    .child-row td { font-size: 13px; color: #444; padding-top: 8px; padding-bottom: 8px; }
-    .child-row.active { display: table-row; animation: fadeIn 0.3s ease; }
+    .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
+    .btn-outline { border: 1px solid white; color: white; background: transparent; }
+    .btn-sm { padding: 4px 8px; }
 
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-    .btn { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; transition: 0.3s; display: inline-flex; align-items: center; gap: 5px; }
-    .btn-action { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 5px; transition: transform 0.2s; }
-    .btn-action:hover { transform: scale(1.2); }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: white; padding: 25px; border-radius: 12px; width: 400px; }
+    input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
     
-    input, select { padding: 10px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
-    
-    /* Modal */
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    .modal-content { background: white; padding: 25px; border-radius: 10px; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    .modal-body { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; }
-    .badge-qty { background: var(--primary); color: white; padding: 3px 10px; border-radius: 12px; font-weight: bold; font-size: 12px; }
+    .badge-qty { background: #e9ecef; padding: 4px 10px; border-radius: 10px; color: var(--primary); font-weight: 800; }
   </style>
 </head>
 <body>
 
-  <div class="top-nav">
-    <div style="font-weight: bold; font-size: 1.2rem;">SIMONETTI | PRODUTOS</div>
-    <div id="userDisplay">Carregando...</div>
-    <button onclick="window.logout()" class="btn" style="background:var(--danger); color:white;">SAIR</button>
-  </div>
+  <nav class="top-nav">
+    <a href="estoque.html" class="btn btn-outline"><i class="fas fa-arrow-left"></i> VOLTAR</a>
+    <h1 style="color:white; margin:0; font-size:18px; letter-spacing:2px;">CONTROLE DE PULMÃO - ASSISTENCIA</h1>
+    <div style="display:flex; gap:15px; align-items:center;">
+      <div id="userDisplay" style="color:white; font-size: 13px;"></div>
+      <button onclick="window.logout()" class="btn" style="background:var(--danger); color:white;"><i class="fas fa-sign-out-alt"></i></button>
+    </div>
+  </nav>
 
   <div class="container">
-    <div id="painelCadastro" class="glass-panel" style="display:none; gap:10px;">
-      <select id="selForn" style="flex:1;"></select>
-      <input type="text" id="newCod" placeholder="Cód. Produto" style="flex:1;">
-      <input type="text" id="newNome" placeholder="Nome do Produto..." style="flex:2;">
-      <button id="btnSaveProd" class="btn" style="background:var(--success); color:white;"><i class="fas fa-plus"></i></button>
+    <div id="painelCadastro" class="glass-panel" style="display:none; flex-wrap:wrap; gap:15px; align-items:flex-end;">
+      <div style="flex:1;"><label style="font-size:11px;">FORNECEDOR</label><select id="selForn"></select></div>
+      <div style="flex:1;"><label style="font-size:11px;">CÓD. PRODUTO</label><input type="text" id="newCod"></div>
+      <div style="flex:2;"><label style="font-size:11px;">NOME DO PRODUTO</label><input type="text" id="newNome"></div>
+      <button id="btnSaveProd" class="btn" style="background:var(--success); color:white; height:40px; margin-bottom:8px;"><i class="fas fa-plus"></i> CADASTRAR</button>
     </div>
 
-    <div class="glass-panel" style="display:flex; gap:10px; align-items:center;">
-      <select id="filtroForn" style="flex:1;"></select>
-      <input type="text" id="filtroCod" placeholder="Cód. ou SKU..." style="flex:1;">
-      <input type="text" id="filtroDesc" placeholder="Nome ou Descrição..." style="flex:2;">
-      <button onclick="window.filtrar()" class="btn" style="background:var(--primary); color:white;"><i class="fas fa-search"></i> BUSCAR</button>
+    <div class="glass-panel" style="display:flex; gap:10px; margin-top:0;">
+      <select id="filtroForn" onchange="window.filtrar()" style="flex:1; margin:0;"><option value="">Todos os Fornecedores</option></select>
+      <input type="text" id="filtroCod" placeholder="Cód. Prod ou SKU..." onkeyup="window.filtrar()" style="flex:1; margin:0;">
+      <input type="text" id="filtroDesc" placeholder="Nome ou Descrição..." onkeyup="window.filtrar()" style="flex:2; margin:0;">
       <button onclick="window.limparFiltros()" class="btn" style="background:var(--gray); color:white;"><i class="fas fa-eraser"></i></button>
     </div>
 
-    <div class="glass-panel" style="padding:0; overflow:hidden;">
+    <div class="glass-panel" style="padding: 0; overflow: hidden;">
       <table>
         <thead>
           <tr>
-            <th style="width:50px; text-align:center;">#</th>
-            <th style="width:120px;">CÓDIGO</th>
+            <th style="width: 40px; text-align: center;">#</th>
+            <th style="width: 120px;">CÓDIGO</th>
             <th>FORNECEDOR</th>
-            <th>DESCRIÇÃO PRODUTO</th>
-            <th style="text-align:center;">ESTOQUE TOTAL</th>
-            <th style="text-align:right; width: 150px; padding-right:20px;">AÇÕES</th>
+            <th>DESCRIÇÃO</th>
+            <th style="text-align: center;">TOTAL</th>
+            <th style="text-align: right; padding-right: 20px;">AÇÕES</th>
           </tr>
         </thead>
         <tbody id="tblEstoque"></tbody>
@@ -87,8 +88,8 @@
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin:0; color:var(--primary); border-bottom:2px solid #eee; padding-bottom:10px;">Ação</h3>
-      <div id="modalBody" class="modal-body"></div>
+      <h3 id="modalTitle" style="margin-top: 0; color: var(--primary);">Ação</h3>
+      <div id="modalBody"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
         <button onclick="window.fecharModal()" class="btn" style="background:#eee;">CANCELAR</button>
         <button id="btnModalConfirm" class="btn" style="background:var(--primary); color:white;">CONFIRMAR</button>
@@ -96,6 +97,6 @@
     </div>
   </div>
 
-  <script type="module" src="produtos.js"></script>
+  <script type="module" src="js/produtos.js"></script>
 </body>
 </html>
