@@ -16,7 +16,6 @@ onAuthStateChanged(auth, async user => {
             const data = userSnap.data();
             userRole = (data.role || "leitor").toLowerCase();
             
-            // Trava: Se não for admin, volta para o dashboard
             if (userRole !== "admin") {
                 alert("Acesso restrito a administradores.");
                 window.location.href = "dashboard.html";
@@ -32,10 +31,12 @@ onAuthStateChanged(auth, async user => {
     }
 });
 
+// Logout
 document.getElementById("btnLogout").onclick = () => signOut(auth).then(() => window.location.href = "index.html");
 
 // --- MÁSCARAS ---
 const aplicarMascaraCnpj = (el) => {
+    if(!el) return;
     el.addEventListener('input', (e) => {
         let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,3})(\d{0,3})(\d{0,4})(\d{0,2})/);
         e.target.value = !x[2] ? x[1] : x[1] + '.' + x[2] + '.' + x[3] + '/' + x[4] + (x[5] ? '-' + x[5] : '');
@@ -52,6 +53,9 @@ async function carregar() {
 
     snap.forEach(d => {
         const f = d.data();
+        // Importante: Usamos base64 ou passamos o ID para evitar erros de aspas no JSON.stringify dentro do HTML
+        const fJson = encodeURIComponent(JSON.stringify(f));
+        
         lista.innerHTML += `
             <tr>
                 <td style="font-weight:bold; color:var(--primary)">${f.nome}</td>
@@ -59,7 +63,7 @@ async function carregar() {
                 <td>${f.email || '---'}</td>
                 <td>${f.telefone || '---'}</td>
                 <td style="text-align: right;">
-                    <button class="btn-action" style="background:var(--warning)" onclick="window.abrirEdicao('${d.id}', \`${JSON.stringify(f)}\`)">
+                    <button class="btn-action" style="background:var(--warning)" onclick="window.abrirEdicao('${d.id}', '${fJson}')">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn-action" style="background:var(--danger)" onclick="window.excluirF('${d.id}', '${f.nome}')">
@@ -86,8 +90,11 @@ document.getElementById("btnSalvarF").onclick = async () => {
     carregar();
 };
 
-window.abrirEdicao = (id, dataJson) => {
-    const f = JSON.parse(dataJson);
+// --- FUNÇÕES GLOBAIS (Expostas para o HTML) ---
+
+window.abrirEdicao = (id, fJsonEncoded) => {
+    const f = JSON.parse(decodeURIComponent(fJsonEncoded));
+    
     document.getElementById("editNome").value = f.nome;
     document.getElementById("editCnpj").value = f.cnpj || "";
     document.getElementById("editEmail").value = f.email || "";
@@ -95,6 +102,7 @@ window.abrirEdicao = (id, dataJson) => {
     
     document.getElementById("modalEdit").style.display = "flex";
     
+    // Configura o botão de salvar do modal
     document.getElementById("btnConfirmarEdit").onclick = async () => {
         await updateDoc(doc(db, "fornecedores", id), {
             nome: document.getElementById("editNome").value.toUpperCase(),
@@ -107,14 +115,16 @@ window.abrirEdicao = (id, dataJson) => {
     };
 };
 
+window.fecharModal = () => {
+    document.getElementById("modalEdit").style.display = "none";
+};
+
 window.excluirF = async (id, nome) => {
     if(confirm(`Deseja remover permanentemente o fornecedor ${nome}?`)) {
         await deleteDoc(doc(db, "fornecedores", id));
         carregar();
     }
 };
-
-window.fecharModal = () => document.getElementById("modalEdit").style.display = "none";
 
 function limparCampos() {
     document.getElementById("nomeF").value = "";
