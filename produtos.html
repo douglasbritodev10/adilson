@@ -7,7 +7,7 @@
   <style>
     :root {
       --primary: #004a99; --glass: rgba(255, 255, 255, 0.9);
-      --danger: #ff4d4d; --success: #00c853; --gray: #6c757d; --warning: #ffab00;
+      --danger: #ff4d4d; --success: #00c853; --gray: #6c757d; --warning: #ffab00; --info: #17a2b8;
     }
     body { 
       background: linear-gradient(135deg, #001f3f 0%, #004a99 100%);
@@ -24,58 +24,47 @@
       margin: 20px; padding: 20px; border-radius: 12px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th { background: #f8f9fa; color: var(--primary); padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f8f9fa; color: var(--primary); padding: 12px; text-align: left; font-size: 11px; }
     td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-    tr.child-row { background: #fdfdfd; display: none; }
-    tr.child-row.active { display: table-row; }
     
-    .btn { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-edit { background: var(--warning); color: #212529; }
-    .btn-add { background: var(--success); color: white; }
+    .prod-row { background: white; font-weight: 500; }
+    .child-row { background: #f9f9f9; display: none; transition: 0.3s; }
+    .child-row.active { display: table-row; }
+    
+    .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+    .btn-outline { border: 1px solid white; color: white; background: transparent; }
+    .btn-sm { padding: 4px 8px; font-size: 11px; }
 
     .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    .modal-content { background: white; padding: 30px; border-radius: 15px; width: 450px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-    input, select { width: 100%; padding: 10px; margin: 8px 0 15px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    .modal-content { background: white; padding: 25px; border-radius: 12px; width: 400px; }
+    input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; }
   </style>
 </head>
 <body>
 
   <nav class="top-nav">
-    <div style="display:flex; align-items:center; gap:20px;">
-      <h2 style="color:white; margin:0; letter-spacing:1px;">SIMONETTI <span style="font-weight:100; font-size:14px;">PRODUTOS</span></h2>
-      <a href="estoque.html" class="btn" style="background:rgba(255,255,255,0.1); color:white;">VER ESTOQUE</a>
-    </div>
+    <a href="estoque.html" class="btn btn-outline"><i class="fas fa-arrow-left"></i> VOLTAR</a>
+    <h2 style="color:white; margin:0; letter-spacing:1px; position: absolute; left: 50%; transform: translateX(-50%);">SIMONETTI</h2>
     <div style="display:flex; gap:15px; align-items:center;">
-      <div id="userDisplay" style="color:white; font-weight:bold;"></div>
-      <button onclick="window.logout()" class="btn-danger btn" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
+      <div id="userDisplay" style="color:white; font-size: 14px;"></div>
+      <button onclick="window.logout()" class="btn" style="background:var(--danger); color:white;"><i class="fas fa-sign-out-alt"></i> SAIR</button>
     </div>
   </nav>
 
   <div class="container">
     <div id="painelCadastro" class="glass-panel" style="display:none; flex-wrap:wrap; gap:15px; align-items:flex-end;">
-      <div style="flex:1; min-width:200px;">
-        <label style="font-size:11px; font-weight:bold;">FORNECEDOR:</label>
-        <select id="selForn"><option value="">Escolha o Fornecedor</option></select>
-      </div>
-      <div style="flex:1; min-width:150px;">
-        <label style="font-size:11px; font-weight:bold;">CÓDIGO PRINCIPAL:</label>
-        <input type="text" id="newCod" placeholder="Ex: 5050">
-      </div>
-      <div style="flex:2; min-width:250px;">
-        <label style="font-size:11px; font-weight:bold;">NOME DO PRODUTO:</label>
-        <input type="text" id="newNome" placeholder="Ex: ROUPEIRO ATALAIA">
-      </div>
-      <button id="btnSaveProd" class="btn btn-add" style="height:40px; margin-bottom:15px;"><i class="fas fa-save"></i> SALVAR PRODUTO</button>
+      <div style="flex:1;"><label>FORNECEDOR:</label><select id="selForn"></select></div>
+      <div style="flex:1;"><label>CÓD. PRODUTO:</label><input type="text" id="newCod"></div>
+      <div style="flex:2;"><label>NOME DO PRODUTO:</label><input type="text" id="newNome"></div>
+      <button id="btnSaveProd" class="btn" style="background:var(--success); color:white; height:40px; margin-bottom:8px;"><i class="fas fa-save"></i> CADASTRAR</button>
     </div>
 
-    <div class="glass-panel" style="display:flex; gap:15px; margin-top:0;">
+    <div class="glass-panel" style="display:flex; gap:10px; margin-top:0;">
       <select id="filtroForn" onchange="window.filtrar()" style="flex:1; margin:0;"><option value="">Todos os Fornecedores</option></select>
-      <input type="text" id="filtroCod" placeholder="Buscar por Código..." onkeyup="window.filtrar()" style="flex:1; margin:0;">
-      <input type="text" id="filtroDesc" placeholder="Buscar por Descrição..." onkeyup="window.filtrar()" style="flex:2; margin:0;">
-      <button onclick="window.limparFiltros()" class="btn" style="background:var(--gray); color:white;"><i class="fas fa-eraser"></i> LIMPAR</button>
+      <input type="text" id="filtroCod" placeholder="Buscar Cód. Prod ou SKU..." onkeyup="window.filtrar()" style="flex:1; margin:0;">
+      <input type="text" id="filtroDesc" placeholder="Buscar Nome ou Descrição..." onkeyup="window.filtrar()" style="flex:2; margin:0;">
+      <button onclick="window.limparFiltros()" class="btn" style="background:var(--gray); color:white;"><i class="fas fa-eraser"></i></button>
     </div>
 
     <div class="glass-panel" style="padding: 0; overflow: hidden;">
@@ -83,7 +72,7 @@
         <thead>
           <tr>
             <th style="width: 40px;"></th>
-            <th style="width: 120px;">CÓDIGO</th>
+            <th style="width: 100px;">CÓDIGO</th>
             <th>FORNECEDOR</th>
             <th>PRODUTO</th>
             <th style="text-align: center;">TOTAL GERAL</th>
@@ -101,7 +90,7 @@
       <div id="modalBody"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
         <button onclick="window.fecharModal()" class="btn" style="background:#eee;">CANCELAR</button>
-        <button id="btnModalConfirm" class="btn btn-primary">CONFIRMAR</button>
+        <button id="btnModalConfirm" class="btn" style="background:var(--primary); color:white;">CONFIRMAR</button>
       </div>
     </div>
   </div>
