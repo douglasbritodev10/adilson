@@ -93,7 +93,7 @@ async function refresh() {
         // Linhas de Volumes (Filhas)
         Object.entries(info.volumes).forEach(([sku, vol]) => {
             tbody.innerHTML += `
-                <tr class="child-row child-${pId}" data-sku="${sku}">
+                <tr class="child-row child-${pId}" data-sku="${sku}" style="display: none;">
                     <td></td>
                     <td style="color:#888;">SKU: ${sku}</td>
                     <td colspan="2" style="padding-left:30px;"><i class="fas fa-box-open" style="margin-right:8px; color:#ccc;"></i> ${vol.desc}</td>
@@ -111,19 +111,23 @@ async function refresh() {
     window.filtrar(true);
 }
 
-// Lógica de Expandir/Recolher
+// CORREÇÃO: Função de Expandir/Recolher agora altera diretamente o display
 window.toggleVols = (pId, forceOpen = false) => {
     const rows = document.querySelectorAll(`.child-${pId}`);
     const icon = document.getElementById(`icon-${pId}`);
-    const isOpen = rows.length > 0 && rows[0].classList.contains('active');
+    
+    // Verifica se a primeira linha está visível para decidir se abre ou fecha
+    const isCurrentlyOpen = rows.length > 0 && rows[0].style.display !== "none";
+    const shouldOpen = forceOpen || !isCurrentlyOpen;
 
     rows.forEach(r => {
-        if (forceOpen || !isOpen) r.classList.add('active');
-        else r.classList.remove('active');
+        r.style.display = shouldOpen ? "table-row" : "none";
+        // Adiciona/Remove a classe active para manter compatibilidade com o CSS se houver
+        if(shouldOpen) r.classList.add('active'); else r.classList.remove('active');
     });
 
     if (icon) {
-        icon.className = (forceOpen || !isOpen) ? "fas fa-chevron-down" : "fas fa-chevron-right";
+        icon.className = shouldOpen ? "fas fa-chevron-down" : "fas fa-chevron-right";
     }
 };
 
@@ -151,9 +155,10 @@ window.filtrar = (silencioso = false) => {
             
             if(match) {
                 mVol = true;
-                vRow.classList.add('active'); // Mostra o volume filtrado
+                vRow.dataset.filtered = "true";
             } else {
-                vRow.classList.remove('active');
+                vRow.dataset.filtered = "false";
+                vRow.style.display = "none";
             }
         });
 
@@ -162,7 +167,13 @@ window.filtrar = (silencioso = false) => {
         const exibir = mForn && (mProd || mVol);
 
         row.style.display = exibir ? "table-row" : "none";
-        if(mVol && !silencioso) window.toggleVols(pId, true);
+        
+        // Se o volume deu match, abre a lista automaticamente
+        if(mVol && !silencioso) {
+            window.toggleVols(pId, true);
+        } else if (!silencioso) {
+            window.toggleVols(pId, false);
+        }
     });
 };
 
@@ -184,9 +195,12 @@ window.modalMovimentar = async (pId, sku, desc, tipo, enderecado = false) => {
 
     openModal(`${tipo}: ${desc}`, `
         <label style="font-weight:bold; font-size:12px;">QUANTIDADE:</label>
-        <input type="number" id="mQtd" value="1" min="1">
+        <input type="number" id="mQtd" value="1" min="1" style="width:100%; padding:10px; margin-top:5px;">
     `, async () => {
-        const qtd = parseInt(document.getElementById("mQtd").value);
+        const qtdInput = document.getElementById("mQtd").value;
+        const qtd = parseInt(qtdInput);
+        if(!qtd || qtd <= 0) return alert("Informe uma quantidade válida!");
+
         const q = query(collection(db, "volumes"), where("produtoId", "==", pId), where("codigo", "==", sku));
         const snap = await getDocs(q);
         
@@ -208,8 +222,8 @@ window.modalMovimentar = async (pId, sku, desc, tipo, enderecado = false) => {
 
 window.modalEditarVolume = (pId, sku, desc) => {
     openModal("Editar Volume", `
-        <label>SKU (Código):</label><input type="text" id="vSKU" value="${sku}">
-        <label>Descrição:</label><input type="text" id="vD" value="${desc}">
+        <label>SKU (Código):</label><input type="text" id="vSKU" value="${sku}" style="width:100%; padding:10px; margin:5px 0 15px 0;">
+        <label>Descrição:</label><input type="text" id="vD" value="${desc}" style="width:100%; padding:10px; margin-top:5px;">
     `, async () => {
         const novoSKU = document.getElementById("vSKU").value;
         const novaD = document.getElementById("vD").value.toUpperCase();
@@ -230,8 +244,8 @@ window.excluirVolume = async (pId, sku) => {
 
 window.modalEditarProd = (id, nome, cod) => {
     openModal("Editar Produto", `
-        <label>Código:</label><input type="text" id="eCod" value="${cod}">
-        <label>Nome:</label><input type="text" id="eNome" value="${nome}">
+        <label>Código:</label><input type="text" id="eCod" value="${cod}" style="width:100%; padding:10px; margin:5px 0 15px 0;">
+        <label>Nome:</label><input type="text" id="eNome" value="${nome}" style="width:100%; padding:10px; margin-top:5px;">
     `, async () => {
         await updateDoc(doc(db, "produtos", id), {
             nome: document.getElementById("eNome").value.toUpperCase(),
@@ -252,9 +266,9 @@ window.excluirProduto = async (id, nome) => {
 
 window.modalNovoVolume = (pId, pNome) => {
     openModal(`Novo Volume: ${pNome}`, `
-        <label>SKU:</label><input type="text" id="nvSKU">
-        <label>Descrição:</label><input type="text" id="nvDesc">
-        <label>Quantidade:</label><input type="number" id="nvQtd" value="1">
+        <label>SKU:</label><input type="text" id="nvSKU" style="width:100%; padding:10px; margin:5px 0 10px 0;">
+        <label>Descrição:</label><input type="text" id="nvDesc" style="width:100%; padding:10px; margin:5px 0 10px 0;">
+        <label>Quantidade:</label><input type="number" id="nvQtd" value="1" style="width:100%; padding:10px;">
     `, async () => {
         await addDoc(collection(db, "volumes"), {
             produtoId: pId, codigo: document.getElementById("nvSKU").value,
