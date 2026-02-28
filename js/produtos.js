@@ -23,62 +23,52 @@ onAuthStateChanged(auth, async user => {
     } else { window.location.href = "index.html"; }
 });
 
-async function registrarMov(tipo, prod, vol, qtd, ant, atu) {
-    await addDoc(collection(db, "movimentacoes"), {
-        usuario: usernameDB, tipo, produto: prod, volume: vol, 
-        quantidade: qtd, anterior: ant, atual: atu, data: serverTimestamp()
-    });
-}
-
 async function init() {
     const fSnap = await getDocs(query(collection(db, "fornecedores"), orderBy("nome")));
     const selC = document.getElementById("selForn");
     const selF = document.getElementById("filtroForn");
-    selC.innerHTML = '<option value="">Escolha o Fornecedor</option>';
+    selC.innerHTML = '<option value="">Fornecedor...</option>';
     selF.innerHTML = '<option value="">Todos os Fornecedores</option>';
     fSnap.forEach(d => {
         fornecedoresCache[d.id] = d.data().nome;
         const opt = `<option value="${d.id}">${d.data().nome}</option>`;
-        if(selC) selC.innerHTML += opt; 
-        if(selF) selF.innerHTML += opt;
+        selC.innerHTML += opt; selF.innerHTML += opt;
     });
     refresh();
 }
 
 async function refresh() {
-    const pSnap = await getDocs(query(collection(db, "produtos"), orderBy("nome")));
-    const vSnap = await getDocs(collection(db, "volumes"));
+    const [pSnap, vSnap] = await Promise.all([
+        getDocs(query(collection(db, "produtos"), orderBy("nome"))),
+        getDocs(collection(db, "volumes"))
+    ]);
     
     const tbody = document.getElementById("tblEstoque");
     tbody.innerHTML = "";
 
-    // Mapeia volumes por produto
-    const volumesPorProduto = {};
+    // 1. Agrupar volumes por Produto e unificar SKUs iguais
+    const mapaVolumes = {};
     vSnap.forEach(d => {
         const v = d.data();
         const pId = v.produtoId;
-        if(!volumesPorProduto[pId]) volumesPorProduto[pId] = {};
-        
         const sku = v.codigo || "S/C";
-        if(!volumesPorProduto[pId][sku]) {
-            volumesPorProduto[pId][sku] = { 
-                codigo: sku,
-                descricao: v.descricao,
-                quantidade: 0,
-                possuiEnderecado: false 
-            };
+        
+        if (!mapaVolumes[pId]) mapaVolumes[pId] = {};
+        if (!mapaVolumes[pId][sku]) {
+            mapaVolumes[pId][sku] = { desc: v.descricao, qtd: 0, enderecado: !!v.enderecoId };
         }
-        volumesPorProduto[pId][sku].quantidade += (v.quantidade || 0);
-        if(v.enderecoId) volumesPorProduto[pId][sku].possuiEnderecado = true;
+        mapaVolumes[pId][sku].qtd += (v.quantidade || 0);
+        if (v.enderecoId) mapaVolumes[pId][sku].enderecado = true;
     });
 
+    // 2. Renderizar uma linha ÚNICA por produto
     pSnap.forEach(d => {
         const p = d.data();
         const pId = d.id;
-        const volumesUnificados = Object.values(volumesPorProduto[pId] || {});
-        const totalGeral = volumesUnificados.reduce((acc, curr) => acc + curr.quantidade, 0);
+        const volumesDoProduto = Object.entries(mapaVolumes[pId] || {});
+        const totalGeral = volumesDoProduto.reduce((acc, [sku, data]) => acc + data.qtd, 0);
 
-        // LINHA DO PRODUTO (Sempre aparece)
+        // Linha Principal do Produto
         tbody.innerHTML += `
             <tr class="prod-row" data-id="${pId}" data-cod="${p.codigo || ''}" data-forn="${p.fornecedorId}" onclick="window.toggleVols('${pId}')">
                 <td style="text-align:center;"><i class="fas fa-chevron-right"></i></td>
@@ -87,25 +77,22 @@ async function refresh() {
                 <td>${p.nome}</td>
                 <td style="text-align:center;"><span class="badge-qty">${totalGeral}</span></td>
                 <td style="text-align:right;">
-                    <button class="btn btn-sm" style="background:var(--success); color:white;" onclick="event.stopPropagation(); window.modalNovoVolume('${pId}', '${p.nome}')" title="Novo Volume"><i class="fas fa-plus"></i></button>
-                    ${userRole === 'admin' ? `<button class="btn btn-sm" style="background:var(--danger); color:white;" onclick="event.stopPropagation(); window.deletarProd('${pId}', '${p.nome}')"><i class="fas fa-trash"></i></button>` : ''}
+                    <button class="btn btn-sm" style="background:var(--success); color:white;" onclick="event.stopPropagation(); window.modalNovoVolume('${pId}', '${p.nome}')"><i class="fas fa-plus"></i></button>
                 </td>
             </tr>
         `;
 
-        // LINHAS DOS VOLUMES (Filhos unificados)
-        volumesUnificados.forEach(v => {
+        // Linhas de Volumes (Filhos) - Escondidas por padrão
+        volumesDoProduto.forEach(([sku, data]) => {
             tbody.innerHTML += `
-                <tr class="child-row child-${pId}" data-sku="${v.codigo}">
+                <tr class="child-row child-${pId}" style="display:none;" data-sku="${sku}">
                     <td></td>
-                    <td style="font-size:11px; color:var(--gray);">SKU: ${v.codigo}</td>
-                    <td colspan="2" style="padding-left:20px; color:#555;">${v.descricao}</td>
-                    <td style="text-align:center; font-weight:bold;">${v.quantidade}</td>
+                    <td style="font-size:11px; color:#666;">SKU: ${sku}</td>
+                    <td colspan="2" style="padding-left:20px;">${data.desc}</td>
+                    <td style="text-align:center; font-weight:bold;">${data.qtd}</td>
                     <td style="text-align:right;">
-                        <div style="display:flex; gap:5px; justify-content:flex-end;">
-                            <button class="btn btn-sm" style="background:var(--info); color:white;" onclick="window.movimentar('${pId}','${v.codigo}','${p.nome}','${v.descricao}',${v.quantidade},'ENTRADA')"><i class="fas fa-arrow-up"></i></button>
-                            <button class="btn btn-sm" style="background:var(--danger); color:white;" onclick="window.movimentar('${pId}','${v.codigo}','${p.nome}','${v.descricao}',${v.quantidade},'SAÍDA')"><i class="fas fa-arrow-down"></i></button>
-                        </div>
+                        <button class="btn btn-sm" style="background:var(--info); color:white;" onclick="window.movimentar('${pId}','${sku}','${p.nome}','${data.desc}',${data.qtd},'ENTRADA')"><i class="fas fa-arrow-up"></i></button>
+                        <button class="btn btn-sm" style="background:var(--danger); color:white;" onclick="window.movimentar('${pId}','${sku}','${p.nome}','${data.desc}',${data.qtd},'SAÍDA')"><i class="fas fa-arrow-down"></i></button>
                     </td>
                 </tr>
             `;
@@ -113,47 +100,78 @@ async function refresh() {
     });
 }
 
+// Abre/Fecha volumes do produto
+window.toggleVols = (pId) => {
+    const rows = document.querySelectorAll(`.child-${pId}`);
+    const icon = document.querySelector(`tr[data-id="${pId}"] i`);
+    rows.forEach(r => r.style.display = (r.style.display === "none" ? "table-row" : "none"));
+    if(icon) icon.classList.toggle('fa-chevron-down');
+};
+
+// Filtro inteligente (Busca código de produto ou SKU de volume)
+window.filtrar = () => {
+    const fCod = document.getElementById("filtroCod").value.toLowerCase();
+    const fDesc = document.getElementById("filtroDesc").value.toLowerCase();
+    const fForn = document.getElementById("filtroForn").value;
+
+    document.querySelectorAll(".prod-row").forEach(row => {
+        const pId = row.dataset.id;
+        const pCod = row.dataset.cod.toLowerCase();
+        const pNome = row.innerText.toLowerCase();
+        const pForn = row.dataset.forn;
+
+        // Verifica se algum volume interno bate com o SKU pesquisado
+        let matchSKU = false;
+        document.querySelectorAll(`.child-${pId}`).forEach(vRow => {
+            if (fCod && vRow.dataset.sku.toLowerCase().includes(fCod)) matchSKU = true;
+        });
+
+        const matchProd = (pCod.includes(fCod) || pNome.includes(fDesc));
+        const matchForn = (fForn === "" || pForn === fForn);
+
+        if (matchForn && (matchProd || matchSKU)) {
+            row.style.display = "table-row";
+            if (fCod && matchSKU) window.toggleVols(pId); // Auto-expande se achar pelo SKU
+        } else {
+            row.style.display = "none";
+        }
+    });
+};
+
+// Movimentação com a trava de endereçamento que você pediu
 window.movimentar = async (pId, sku, pNome, vDesc, qtdAtual, tipo) => {
-    if(userRole === 'leitor') return;
-    const val = prompt(`${tipo} - ${vDesc}\nQuantidade:`);
-    if(!val || isNaN(val) || parseInt(val) <= 0) return;
+    const val = prompt(`${tipo}: ${vDesc}\nQuantidade:`);
+    if(!val || isNaN(val)) return;
     const qtdInformada = parseInt(val);
 
     const q = query(collection(db, "volumes"), where("produtoId", "==", pId), where("codigo", "==", sku));
     const vSnap = await getDocs(q);
     
-    let volSemEndereco = null;
-    let jaTemEndereco = false;
+    let volPendente = null;
+    let jaEnderecado = false;
 
-    vSnap.forEach(docV => {
-        const data = docV.data();
-        if(!data.enderecoId || data.enderecoId === "") volSemEndereco = { id: docV.id, ...data };
-        else jaTemEndereco = true;
+    vSnap.forEach(d => {
+        if (!d.data().enderecoId) volPendente = { id: d.id, ...d.data() };
+        else jaEnderecado = true;
     });
 
-    if(tipo === 'ENTRADA') {
-        if(volSemEndereco) {
-            await updateDoc(doc(db, "volumes", volSemEndereco.id), { quantidade: volSemEndereco.quantidade + qtdInformada });
+    if (tipo === 'ENTRADA') {
+        if (volPendente) {
+            await updateDoc(doc(db, "volumes", volPendente.id), { quantidade: volPendente.quantidade + qtdInformada });
         } else {
             await addDoc(collection(db, "volumes"), {
                 produtoId: pId, codigo: sku, descricao: vDesc, 
                 quantidade: qtdInformada, enderecoId: "", dataAlt: serverTimestamp()
             });
         }
-        alert("Entrada registrada! O volume está na lista 'A Endereçar'.");
         refresh();
     } else {
-        if(jaTemEndereco) {
-            alert("PRODUTO JÁ ENDEREÇADO!\nA saída deve ser feita pela tela de ESTOQUE/ENDEREÇAMENTO.");
-            return;
-        }
-        if(!volSemEndereco || volSemEndereco.quantidade < qtdInformada) {
-            alert("Quantidade insuficiente nos volumes não endereçados.");
-            return;
-        }
-        const novaQtd = volSemEndereco.quantidade - qtdInformada;
-        if(novaQtd === 0) await deleteDoc(doc(db, "volumes", volSemEndereco.id));
-        else await updateDoc(doc(db, "volumes", volSemEndereco.id), { quantidade: novaQtd });
+        if (jaEnderecado) return alert("ERRO: Produto já endereçado! Dê a saída pela tela de Estoque.");
+        if (!volPendente || volPendente.quantidade < qtdInformada) return alert("Estoque insuficiente.");
+        
+        const novaQtd = volPendente.quantidade - qtdInformada;
+        if (novaQtd <= 0) await deleteDoc(doc(db, "volumes", volPendente.id));
+        else await updateDoc(doc(db, "volumes", volPendente.id), { quantidade: novaQtd });
         refresh();
     }
 };
@@ -161,47 +179,31 @@ window.movimentar = async (pId, sku, pNome, vDesc, qtdAtual, tipo) => {
 window.modalNovoVolume = (pId, pNome) => {
     document.getElementById("modalTitle").innerText = `Novo Volume: ${pNome}`;
     document.getElementById("modalBody").innerHTML = `
-        <label>SKU (CÓDIGO DO VOLUME)</label><input type="text" id="vCod">
-        <label>DESCRIÇÃO DO VOLUME</label><input type="text" id="vDesc" placeholder="Ex: CX 1/2 ou Tampo">
-        <label>QTD INICIAL</label><input type="number" id="vQtd" value="1">
+        <label>SKU</label><input type="text" id="vCod">
+        <label>DESCRIÇÃO</label><input type="text" id="vDesc">
+        <label>QTD</label><input type="number" id="vQtd" value="1">
     `;
     document.getElementById("modalMaster").style.display = "flex";
     document.getElementById("btnModalConfirm").onclick = async () => {
-        const cod = document.getElementById("vCod").value;
-        const desc = document.getElementById("vDesc").value.toUpperCase();
-        const qtd = parseInt(document.getElementById("vQtd").value);
-        if(!cod || !desc) return alert("Preencha tudo!");
-        
         await addDoc(collection(db, "volumes"), {
-            produtoId: pId, codigo: cod, descricao: desc, 
-            quantidade: qtd, enderecoId: "", dataAlt: serverTimestamp()
+            produtoId: pId, codigo: document.getElementById("vCod").value,
+            descricao: document.getElementById("vDesc").value.toUpperCase(),
+            quantidade: parseInt(document.getElementById("vQtd").value),
+            enderecoId: "", dataAlt: serverTimestamp()
         });
         window.fecharModal(); refresh();
     };
 };
 
-window.toggleVols = (pId) => {
-    document.querySelectorAll(`.child-${pId}`).forEach(r => r.classList.toggle('active'));
-};
-
-window.deletarProd = async (id, nome) => {
-    if(confirm(`Excluir o produto "${nome}" e todos os seus volumes?`)) {
-        await deleteDoc(doc(db, "produtos", id));
-        refresh();
-    }
-};
+window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
+window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
+window.limparFiltros = () => { document.querySelectorAll('input').forEach(i=>i.value=""); refresh(); };
 
 document.getElementById("btnSaveProd").onclick = async () => {
     const n = document.getElementById("newNome").value.toUpperCase();
     const c = document.getElementById("newCod").value;
     const f = document.getElementById("selForn").value;
     if(!n || !f) return alert("Preencha Nome e Fornecedor!");
-    await addDoc(collection(db, "produtos"), { nome: n, codigo: c, fornecedorId: f, dataCad: serverTimestamp() });
-    document.getElementById("newNome").value = "";
-    document.getElementById("newCod").value = "";
+    await addDoc(collection(db, "produtos"), { nome: n, codigo: c, fornecedorId: f });
     refresh();
 };
-
-window.fecharModal = () => document.getElementById("modalMaster").style.display = "none";
-window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
-window.limparFiltros = () => { location.reload(); };
