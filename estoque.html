@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simonetti - Gestão de Estoque</title>
+  <title>Estoque - Móveis Simonetti</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     :root {
@@ -16,73 +16,76 @@
       color: #333; min-height: 100vh;
     }
 
-    /* Top Nav Responsiva */
+    /* Top Nav Padronizada */
     .top-nav { 
       background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(15px);
       padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 1px solid rgba(255,255,255,0.1); sticky; top: 0; z-index: 1000;
+      border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; z-index: 1000;
     }
-    .btn-back { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; text-decoration: none; }
-    .user-info { display: flex; align-items: center; gap: 15px; color: white; font-size: 0.9rem; }
+    .nav-left { display: flex; align-items: center; gap: 15px; }
+    .btn-back { color: white; font-size: 1.2rem; text-decoration: none; padding: 5px 10px; }
+    
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .user-badge { color: white; font-size: 0.85rem; font-weight: 500; }
     #btnLogout { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
-    .main-container { display: flex; flex-direction: column; padding: 15px; gap: 15px; max-width: 1400px; margin: 0 auto; }
+    .main-container { padding: 15px; max-width: 1200px; margin: 0 auto; }
     
-    /* Painéis */
-    .glass-panel { background: var(--glass); padding: 15px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .glass-panel { background: var(--glass); padding: 15px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin-bottom: 15px; }
     
-    .filter-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .filter-bar input, .filter-bar select { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 100%; box-sizing: border-box; }
+    /* Filtros Mobile-Friendly */
+    .filter-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .filter-bar input, .filter-bar select { padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; }
     .full-width { grid-column: span 2; }
 
     /* Grid de Endereços */
-    .grid-enderecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 10px; }
-    .endereco-card { background: #f8f9fa; border-left: 5px solid var(--primary); border-radius: 8px; padding: 12px; position: relative; }
-    .end-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-    .end-title { font-weight: bold; color: var(--primary); font-size: 1.1rem; }
+    .grid-enderecos { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+    .endereco-card { background: white; border-top: 4px solid var(--primary); border-radius: 8px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .end-header { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 10px; font-weight: bold; }
     
-    /* Volumes dentro do Card */
-    .vol-item { background: white; border: 1px solid #eee; margin-bottom: 5px; padding: 8px; border-radius: 4px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
-    .vol-info { flex: 1; }
-    .vol-actions { display: flex; gap: 5px; }
-    .btn-sm { padding: 5px 8px; border: none; border-radius: 3px; cursor: pointer; color: white; }
+    /* Itens de Volume */
+    .vol-item { background: #f9f9f9; border: 1px solid #eee; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.9rem; }
+    .vol-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+    .btn-sm { padding: 6px 10px; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; }
 
-    /* Modais */
+    /* Modal */
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 15px; }
-    .modal-content { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 450px; }
-    .modal-content input, .modal-content select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    .modal-content { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 400px; }
     
-    /* Celular */
     @media (max-width: 600px) {
       .filter-bar { grid-template-columns: 1fr; }
       .full-width { grid-column: span 1; }
-      .user-name { display: none; } /* Esconde nome longo no mobile */
+      .user-badge span { display: none; } /* Esconde o "Olá" no celular, deixa só o ícone */
     }
   </style>
 </head>
 <body>
 
   <nav class="top-nav">
-    <a href="dashboard.html" class="btn-back"><i class="fas fa-arrow-left"></i></a>
-    <div class="user-info">
-      <span class="user-name" id="userDisplay"><i class="fas fa-user-circle"></i> Usuário</span>
-      <button id="btnLogout" onclick="window.logout()">SAIR</button>
+    <div class="nav-left">
+      <a href="dashboard.html" class="btn-back"><i class="fas fa-arrow-left"></i></a>
+      <span style="color: white; font-weight: bold;">ESTOQUE</span>
+    </div>
+    <div class="nav-right">
+      <div class="user-badge" id="userDisplay"><i class="fas fa-user-circle"></i> <span>Carregando...</span></div>
+      <button id="btnLogout">SAIR</button>
     </div>
   </nav>
 
   <div class="main-container">
-    <div class="glass-panel">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2 style="margin: 0; color: var(--primary); font-size: 1.3rem;">Estoque / Endereçamento</h2>
-        <button id="btnNovoEnd" onclick="window.modalNovoEnd()" class="btn-sm" style="background: var(--success); display: none;">+ ENDEREÇO</button>
-      </div>
+    <div class="glass-panel" id="painelPendentes" style="border-left: 5px solid var(--warning);">
+      <h3 style="margin-top:0; color: #856404;"><i class="fas fa-exclamation-triangle"></i> Aguardando Endereçamento</h3>
+      <div id="listaPendentes" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;">
+        </div>
+    </div>
 
+    <div class="glass-panel">
       <div class="filter-bar">
-        <input type="text" id="filtroCod" placeholder="Cód. Prod ou SKU" onkeyup="window.filtrarEstoque()">
-        <select id="filtroForn" onchange="window.filtrarEstoque()">
+        <input type="text" id="filtroCod" placeholder="Código ou SKU" onkeyup="window.filtrar()">
+        <select id="filtroForn" onchange="window.filtrar()">
           <option value="">Todos Fornecedores</option>
         </select>
-        <input type="text" id="filtroDesc" class="full-width" placeholder="Nome do produto ou descrição..." onkeyup="window.filtrarEstoque()">
+        <input type="text" id="filtroDesc" class="full-width" placeholder="Descrição do produto..." onkeyup="window.filtrar()">
       </div>
     </div>
 
@@ -92,11 +95,16 @@
 
   <div id="modalMaster" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top:0; color:var(--primary);">Ação</h3>
-      <div id="modalBody"></div>
-      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-        <button onclick="window.fecharModal()" style="padding:10px; border:none; border-radius:5px; cursor:pointer;">CANCELAR</button>
-        <button id="btnModalConfirm" style="padding:10px 20px; border:none; border-radius:5px; cursor:pointer; background:var(--primary); color:white;">CONFIRMAR</button>
+      <h3 id="modalTitle" style="color: var(--primary); margin-top: 0;">Mover Volume</h3>
+      <div id="modalBody">
+        <label style="font-size: 12px; font-weight: bold;">DESTINO:</label>
+        <select id="selDestino" style="width:100%; padding:10px; margin: 10px 0;"></select>
+        <label style="font-size: 12px; font-weight: bold;">QUANTIDADE:</label>
+        <input type="number" id="qtdMover" style="width:100%; padding:10px; margin: 10px 0;">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+        <button onclick="window.fecharModal()" style="padding: 10px; border: none; background: #eee; border-radius: 5px;">CANCELAR</button>
+        <button id="btnConfirmarAcao" style="padding: 10px 20px; border: none; background: var(--primary); color: white; border-radius: 5px;">CONFIRMAR</button>
       </div>
     </div>
   </div>
