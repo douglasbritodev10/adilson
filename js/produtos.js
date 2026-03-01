@@ -143,8 +143,8 @@ window.filtrar = (silencioso = false) => {
 
     document.querySelectorAll(".prod-row").forEach(row => {
         const pId = row.dataset.id;
-        const pCod = (row.dataset.cod || "").toLowerCase();
         const pForn = row.dataset.forn;
+        const pCod = (row.dataset.cod || "").toLowerCase();
         const pNome = row.innerText.toLowerCase();
 
         let mVol = false;
