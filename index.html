@@ -18,23 +18,23 @@
 </head>
 <body>
     <div class="login-container">
-        <h2>Simonetti</h2>
-        <span class="subtitle" style="color: #7f8c8d; font-size: 14px; margin-bottom: 30px; display: block;">Gestão de Estoque</span>
+        <h2>GESTÃO DE ESTOQUE</h2>
+        <span class="subtitle" style="color: #7f8c8d; font-size: 14px; margin-bottom: 30px; display: block;">Acessar Sistema</span>
         
         <div class="input-group">
-            <input type="email" id="email" placeholder="E-mail corporativo" required autocomplete="email">
+            <input type="email" id="email" placeholder="Seu E-mail" required autocomplete="email">
         </div>
         
         <div class="input-group">
             <input type="password" id="password" placeholder="Sua senha" required>
         </div>
         
-        <button id="btnLogin">ACESSAR SISTEMA</button>
+        <button id="btnLogin">ENTRAR</button>
         
         <p id="error"></p>
 
         <div class="footer-text" style="margin-top: 30px; font-size: 12px; color: #bdc3c7; border-top: 1px solid #eee; padding-top: 20px;">
-            &copy; 2024 Móveis Simonetti<br>Acesso Restrito
+            &copy; 2026 Móveis Simonetti<br>Developed by DB
         </div>
     </div>
 
@@ -72,11 +72,11 @@
                 if (userDoc.exists() && userDoc.data().isFirstLogin) {
                     window.location.href = "first_login.html";
                 } else {
-                    window.location.href = "dashboard.html";
+                    window.location.href = "pagina.html";
                 }
             } catch (e) {
                 console.error("Erro de login:", e.code);
-                btnLogin.innerText = "ACESSAR SISTEMA";
+                btnLogin.innerText = "ENTRAR";
                 btnLogin.disabled = false;
                 
                 // Tradução amigável dos erros do Firebase
