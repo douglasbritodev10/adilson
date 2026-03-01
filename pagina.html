@@ -219,8 +219,9 @@
                         bloquear(cards.historico);
                     } 
                     else if (userRole === "operador") {
-                        // Operador: Bloqueia apenas Fornecedores
+                        // Operador: Bloqueia Fornecedores e Histórico
                         bloquear(cards.fornecedores);
+                        bloquear(cards.historico);
                     }
                     // Admin: Não bloqueia nada
 
